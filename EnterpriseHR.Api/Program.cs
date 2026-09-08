@@ -1,4 +1,8 @@
+using EnterpriseHR.Core.Documents;
+using EnterpriseHR.Core.Services;
 using EnterpriseHR.Infrastructure.Data;
+using EnterpriseHR.Infrastructure.Documents;
+using EnterpriseHR.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -13,6 +17,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddDbContext<EnterpriseHrDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("EnterpriseHR")));
 
+builder.Services.AddScoped<IDocumentExtractor, PdfDocumentExtractor>();
+builder.Services.AddScoped<IDocumentIngestionService, DocumentIngestionService>();
 
 var app = builder.Build();
 
@@ -25,6 +31,11 @@ if (app.Environment.IsDevelopment()) {
 app.MapGet("/db-test", async (EnterpriseHrDbContext db) => {
     var canConnect = await db.Database.CanConnectAsync();
     return Results.Ok(new { canConnect });
+});
+
+app.MapPost("/documents/ingest", async (string filePath, IDocumentIngestionService ingestionService) => {
+    var documentId = await ingestionService.IngestAsync(filePath);
+    return Results.Ok(new { documentId });
 });
 
 app.UseHttpsRedirection();

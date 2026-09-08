@@ -16,4 +16,8 @@
     <ProjectReference Include="..\EnterpriseHR.Infrastructure\EnterpriseHR.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Data\Documents\" />
+  </ItemGroup>
+
 </Project>
