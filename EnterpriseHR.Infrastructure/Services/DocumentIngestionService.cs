@@ -11,10 +11,12 @@ namespace EnterpriseHR.Infrastructure.Services {
     public class DocumentIngestionService : IDocumentIngestionService {
         private readonly EnterpriseHrDbContext _db;
         private readonly IDocumentExtractor _extractor;
+        private readonly IDocumentTextNormalizer _normalizer;
 
-        public DocumentIngestionService(EnterpriseHrDbContext db, IDocumentExtractor extractor) {
+        public DocumentIngestionService(EnterpriseHrDbContext db, IDocumentExtractor extractor, IDocumentTextNormalizer normalizer) {
             _db = db;
             _extractor = extractor;
+            _normalizer = normalizer;
         }
 
         public async Task<int> IngestAsync(string filePath) {
@@ -37,7 +39,8 @@ namespace EnterpriseHR.Infrastructure.Services {
             foreach (var page in extracted.Pages) {
                 document.Pages.Add(new DocumentPage {
                     PageNumber = page.PageNumber,
-                    Content = page.Content
+                    RawContent = page.Content,
+                    NormalizedContent = _normalizer.Normalize(page.Content)
                 });
             }
 

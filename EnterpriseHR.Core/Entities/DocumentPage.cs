@@ -7,7 +7,8 @@ namespace EnterpriseHR.Core.Entities {
         public int DocumentPageId { get; set; }
         public int DocumentId { get; set; }
         public int PageNumber { get; set; }
-        public string Content { get; set; } = string.Empty;
+        public string RawContent { get; set; } = string.Empty;
+        public string NormalizedContent { get; set; } = string.Empty;
         public Document Document { get; set; } = null!;
     }
 }

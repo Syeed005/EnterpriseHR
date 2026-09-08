@@ -30,7 +30,8 @@ namespace EnterpriseHR.Infrastructure.Data {
                 entity.ToTable("DocumentPages");
                 entity.HasKey(x => x.DocumentPageId);
 
-                entity.Property(x => x.Content).IsRequired();
+                entity.Property(x => x.RawContent).IsRequired();
+                entity.Property(x => x.NormalizedContent).IsRequired();
 
                 entity.HasOne(x => x.Document)
                     .WithMany(x => x.Pages)
