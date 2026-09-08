@@ -27,7 +27,15 @@ namespace EnterpriseHR.Infrastructure.Documents {
 
             normalized = normalized.Replace("o!ce", "office");
 
-            normalized = Regex.Replace(normalized, @"[ \t]+", " ");
+            normalized = normalized
+                .Replace("ﬁ", "fi")
+                .Replace("ﬂ", "fl")
+                .Replace("ﬀ", "ff")
+                .Replace("ﬃ", "ffi")
+                .Replace("ﬄ", "ffl");
+
+            //whitespace normalization
+            normalized = Regex.Replace(normalized, @"[ \t]{2,}", " ");
             normalized = Regex.Replace(normalized, @"\s*\r?\n\s*", Environment.NewLine);
 
             return normalized.Trim();

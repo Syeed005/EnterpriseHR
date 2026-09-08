@@ -23,6 +23,11 @@ namespace EnterpriseHR.Infrastructure.Data {
                 entity.Property(x => x.FileType).HasMaxLength(20).IsRequired();
                 entity.Property(x => x.FileHash).HasMaxLength(64);
                 entity.Property(x => x.Title).HasMaxLength(500);
+                entity.Property(x => x.DocumentType).HasMaxLength(100);
+                entity.Property(x => x.Version).HasMaxLength(50);
+                entity.Property(x => x.IssuedBy).HasMaxLength(200);
+                entity.Property(x => x.Audience).HasMaxLength(200);
+                entity.Property(x => x.Status).HasMaxLength(50);
             });
 
             modelBuilder.Entity<DocumentPage>(entity =>
