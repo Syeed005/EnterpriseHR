@@ -12,15 +12,18 @@ namespace EnterpriseHR.Infrastructure.Services {
         private readonly EnterpriseHrDbContext _db;
         private readonly IDocumentExtractor _extractor;
         private readonly IDocumentTextNormalizer _normalizer;
+        private readonly IDocumentMetadataExtractor _metadataExtractor;
 
-        public DocumentIngestionService(EnterpriseHrDbContext db, IDocumentExtractor extractor, IDocumentTextNormalizer normalizer) {
+        public DocumentIngestionService(EnterpriseHrDbContext db, IDocumentExtractor extractor, IDocumentTextNormalizer normalizer, IDocumentMetadataExtractor metadataExtractor) {
             _db = db;
             _extractor = extractor;
             _normalizer = normalizer;
+            _metadataExtractor = metadataExtractor;
         }
 
         public async Task<int> IngestAsync(string filePath) {
             var extracted = await _extractor.ExtractAsync(filePath);
+            var metadata = _metadataExtractor.Extract(extracted);
 
             var exists = await _db.Documents.AnyAsync(x => x.FileHash == extracted.FileHash);
 
@@ -32,7 +35,15 @@ namespace EnterpriseHR.Infrastructure.Services {
                 FilePath = extracted.FilePath,
                 FileType = extracted.FileType,
                 FileHash = extracted.FileHash,
-                Title = Path.GetFileNameWithoutExtension(extracted.FileName),
+
+                Title = metadata.Title ?? Path.GetFileNameWithoutExtension(extracted.FileName),
+                DocumentType = metadata.DocumentType,
+                Version = metadata.Version,
+                EffectiveDate = metadata.EffectiveDate,
+                IssuedBy = metadata.IssuedBy,
+                Audience = metadata.Audience,
+
+                Status = "Pending",
                 CreatedAt = DateTime.UtcNow
             };
 

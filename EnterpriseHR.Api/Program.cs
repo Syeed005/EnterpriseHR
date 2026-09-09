@@ -20,6 +20,7 @@ builder.Services.AddDbContext<EnterpriseHrDbContext>(options =>
 builder.Services.AddScoped<IDocumentExtractor, PdfDocumentExtractor>();
 builder.Services.AddScoped<IDocumentIngestionService, DocumentIngestionService>();
 builder.Services.AddScoped<IDocumentTextNormalizer, DocumentTextNormalizer>();
+builder.Services.AddScoped<IDocumentMetadataExtractor, DocumentMetadataExtractor>();
 
 var app = builder.Build();
 
