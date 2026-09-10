@@ -21,6 +21,8 @@ builder.Services.AddScoped<IDocumentExtractor, PdfDocumentExtractor>();
 builder.Services.AddScoped<IDocumentIngestionService, DocumentIngestionService>();
 builder.Services.AddScoped<IDocumentTextNormalizer, DocumentTextNormalizer>();
 builder.Services.AddScoped<IDocumentMetadataExtractor, DocumentMetadataExtractor>();
+builder.Services.AddScoped<ITextChunker, TextChunker>();
+builder.Services.AddScoped<IDocumentChunkingService, DocumentChunkingService>();
 
 var app = builder.Build();
 
@@ -38,6 +40,11 @@ app.MapGet("/db-test", async (EnterpriseHrDbContext db) => {
 app.MapPost("/documents/ingest", async (string filePath, IDocumentIngestionService ingestionService) => {
     var documentId = await ingestionService.IngestAsync(filePath);
     return Results.Ok(new { documentId });
+});
+
+app.MapPost("/documents/{documentId:int}/chunks", async (int documentId, IDocumentChunkingService chunkingService) => {
+    var chunkCount = await chunkingService.ChunkDocumentAsync(documentId);
+    return Results.Ok(new { documentId, chunkCount });
 });
 
 app.UseHttpsRedirection();

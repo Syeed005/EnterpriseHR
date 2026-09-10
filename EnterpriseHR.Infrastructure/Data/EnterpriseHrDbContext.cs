@@ -11,6 +11,7 @@ namespace EnterpriseHR.Infrastructure.Data {
 
         public DbSet<Document> Documents => Set<Document>();
         public DbSet<DocumentPage> DocumentPages => Set<DocumentPage>();
+        public DbSet<DocumentChunk> DocumentChunks => Set<DocumentChunk>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {
             modelBuilder.Entity<Document>(entity =>
@@ -41,6 +42,20 @@ namespace EnterpriseHR.Infrastructure.Data {
                 entity.HasOne(x => x.Document)
                     .WithMany(x => x.Pages)
                     .HasForeignKey(x => x.DocumentId);
+            });
+
+            modelBuilder.Entity<DocumentChunk>(entity =>
+            {
+                entity.ToTable("DocumentChunks");
+                entity.HasKey(x => x.DocumentChunkId);
+
+                entity.Property(x => x.Content).IsRequired();
+                entity.Property(x => x.SectionTitle).HasMaxLength(500);
+                entity.HasIndex(x => new { x.DocumentPageId, x.ChunkIndex }).IsUnique();
+
+                entity.HasOne(x => x.DocumentPage)
+                    .WithMany(x => x.Chunks)
+                    .HasForeignKey(x => x.DocumentPageId);
             });
         }
     }

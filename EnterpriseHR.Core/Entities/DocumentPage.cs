@@ -10,5 +10,6 @@ namespace EnterpriseHR.Core.Entities {
         public string RawContent { get; set; } = string.Empty;
         public string NormalizedContent { get; set; } = string.Empty;
         public Document Document { get; set; } = null!;
+        public ICollection<DocumentChunk> Chunks { get; set; } = new List<DocumentChunk>();
     }
 }

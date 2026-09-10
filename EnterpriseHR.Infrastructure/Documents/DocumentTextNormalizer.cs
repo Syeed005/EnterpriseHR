@@ -38,6 +38,12 @@ namespace EnterpriseHR.Infrastructure.Documents {
             normalized = Regex.Replace(normalized, @"[ \t]{2,}", " ");
             normalized = Regex.Replace(normalized, @"\s*\r?\n\s*", Environment.NewLine);
 
+            normalized = Regex.Replace(
+                normalized,
+                @"BJIT LIMITED\s*[—-]\s*HEAD OFFICE\s+FITNESS CENTRE USAGE\s*&\s*MAINTENANCE GUIDELINES\s+BJIT Limited\s*[—-]\s*Head Office\s+Version\s+[0-9.]+\s*[·\-]\s*Confidential\s*[—-]   \s*Internal    Use    Only",
+                " ",
+                RegexOptions.IgnoreCase);
+
             return normalized.Trim();
         }
     }
