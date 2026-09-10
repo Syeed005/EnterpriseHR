@@ -63,24 +63,7 @@ The solution was designed around several practical enterprise requirements:
 
 ---
 
-## Architectural Trade-Offs
 
-This project balances competing priorities common in enterprise deployments. The list below summarizes the most important trade-offs we considered and the rationale behind our defaults:
-
-- Local-first vs managed cloud services: keeping data and vector stores local reduces data-exfiltration and compliance risk, but increases operational overhead (storage, scaling, backups). Managed services lower ops burden and can improve availability, but introduce additional data movement and possible compliance concerns.
-- External LLM/embedding APIs vs on-prem models: external APIs provide higher-quality models with less ops work and faster iteration; they require strict data-minimization, prompt redaction, and network egress controls. On-prem models keep data fully internal but require GPU resources, model ops, and update processes.
-- Chunking granularity: smaller chunks improve retrieval precision and reduce irrelevant context, but increase index size and search latency. Larger chunks reduce index complexity but can dilute relevance. We prefer semantically-aware chunking with tunable size.
-- Metadata fidelity vs ingestion complexity: extracting rich metadata (version, effective date, section identifiers) improves grounding, filtering, and auditability, but raises ingestion complexity and may require manual validation for messy source documents.
-- Choice of vector store: embedded/local vector DBs (e.g., FAISS, Milvus, PGVector) give control and predictable costs but require maintenance. Managed vector stores simplify scaling and backups at the cost of external dependency and potential data transfer.
-- Freshness vs cost: frequent re-ingestion keeps responses up-to-date but raises embedding compute and storage costs. Use change-detection, delta indexing, and prioritized re-ingest to balance freshness and cost.
-- Retrieval safety (semantic vs lexical): semantic search improves recall for paraphrased queries but can surface semantically-similar but unsupported content. Combining semantic similarity with lexical filters and metadata constraints reduces hallucination risk.
-- Explainability and provenance: returning source snippets and explicit citations increases user trust and auditability, but requires tracking fragment-to-source mappings and a UI that surfaces provenance clearly.
-- Security and least privilege: minimizing PII sent to external services, enforcing encryption at rest/in transit, and applying strict network and service-account restrictions reduces risk but increases operational configuration work.
-- Scalability and maintainability: modular services, observability, and clear upgrade/migration paths make it easier to evolve from a local deployment to enterprise-scale infrastructure; this usually trades increased upfront design and CI/CD complexity for long-term reliability.
-
-Assumption: the defaults and trade-offs above assume a mid-sized enterprise with moderate compliance requirements; teams should re-evaluate priorities (e.g., fully air-gapped environments) and adjust choices accordingly.
-
----
 
 ## High-Level Architecture
 
@@ -148,3 +131,71 @@ Assumption: the defaults and trade-offs above assume a mid-sized enterprise with
 
 
 ```
+
+## Architectural Trade-Offs
+
+The current architecture intentionally favors simplicity, local control, and learning over maximum scale.
+
+### Advantages
+- Reduced dependency on managed cloud search infrastructure
+- Greater control over enterprise documents
+- Flexible ingestion logic
+- Lower infrastructure requirements for small deployments
+- Easier experimentation with custom document-processing strategies
+- Clear separation between enterprise data and model interaction
+
+### Limitations
+- Regex-based parsing becomes difficult to maintain across highly variable document formats
+- Local vector storage/search may not scale efficiently to very large corpora
+- More operational responsibility remains with the application team
+- Backup, indexing, monitoring, and retrieval optimization must be managed
+- External embedding/LLM APIs still require careful data-governance review
+- Complex document layouts may require dedicated document-intelligence capabilities
+
+---
+## Key Engineering Lesson
+One of the most important lessons from this project is that building an enterprise RAG application is not primarily about calling an LLM.
+
+The difficult part is building the system around the model:
+```text
+Documents
+    ↓
+Extraction
+    ↓
+Structure
+    ↓
+Metadata
+    ↓
+Chunking
+    ↓
+Indexing
+    ↓
+Retrieval
+    ↓
+Authorization
+    ↓
+Context
+    ↓
+Generation
+    ↓
+Evaluation
+    ↓
+Observability
+```
+A strong model cannot compensate for poor source data, incorrect document versions, broken extraction, weak chunking, irrelevant retrieval, or missing authorization controls.
+
+For enterprise **AI, data quality, retrieval architecture, security, and operational design are as important as model selection.**
+
+---
+## Why I Built This
+I built this project to explore a practical question I expect enterprise engineering teams to face increasingly:
+
+> How do you introduce useful generative AI capabilities into an existing organization without assuming that all of its data, applications, and infrastructure can simply be moved to a new cloud-native AI platform?
+
+The project intentionally works within those constraints.
+
+Rather than designing around an idealized greenfield environment, the objective is to understand the existing information landscape, introduce AI where it creates measurable value, identify the limitations of the initial architecture, and provide a realistic path toward a more scalable production system.
+
+That approach reflects how I think enterprise AI should be delivered:
+
+**understand the environment first, integrate with what already exists, prove value quickly, and evolve the architecture as requirements and scale justify it.**
