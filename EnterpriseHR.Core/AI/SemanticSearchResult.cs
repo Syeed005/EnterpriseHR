@@ -10,7 +10,11 @@ namespace EnterpriseHR.Core.AI {
         public int ChunkIndex { get; set; }
         public string? SectionTitle { get; set; }
         public string Content { get; set; } = string.Empty;
-        public double Score { get; set; }
+
+        public double? RetrievalScore { get; set; }
+        public bool IsExpandedContext { get; set; }
+        public int? ExpandedFromChunkId { get; set; }
+
         public string FileName { get; set; } = string.Empty;
         public string? Title { get; set; }
         public string? Version { get; set; }

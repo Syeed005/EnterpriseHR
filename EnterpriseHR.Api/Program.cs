@@ -42,6 +42,20 @@ public partial class Program {
         builder.Services.AddScoped<IDocumentEmbeddingService, DocumentEmbeddingService>();
         builder.Services.AddScoped<ISemanticSearchService, SemanticSearchService>();
 
+        builder.Services.AddSingleton<IChatService>(sp =>
+        {
+            var configuration = sp.GetRequiredService<IConfiguration>();
+            var apiKey = configuration["OpenAI:ApiKey"];
+
+            if (string.IsNullOrWhiteSpace(apiKey))
+                throw new InvalidOperationException("OpenAI API key is not configured.");
+
+            return new OpenAiChatService(apiKey);
+        });
+
+        builder.Services.AddScoped<IRagService, RagService>();
+        builder.Services.AddScoped<IContextExpansionService, ContextExpansionService>();
+
         var app = builder.Build();
 
         // Configure the HTTP request pipeline.
@@ -79,6 +93,12 @@ public partial class Program {
             var results = await searchService.SearchAsync(query, topK ?? 3);
 
             return Results.Ok(results);
+        });
+
+        app.MapPost("/chat/ask", async (RagQuestionRequest request, IRagService ragService) =>
+        {
+            var result = await ragService.AskAsync(request.Question, request.TopK);
+            return Results.Ok(result);
         });
 
         app.UseHttpsRedirection();

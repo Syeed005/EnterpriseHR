@@ -55,12 +55,14 @@ namespace EnterpriseHR.Infrastructure.AI {
                     ChunkIndex = chunk.ChunkIndex,
                     SectionTitle = chunk.SectionTitle,
                     Content = chunk.Content,
-                    Score = score
+                    RetrievalScore = score,
+                    IsExpandedContext = false,
+                    ExpandedFromChunkId = null
                 });
             }
 
             return results
-                .OrderByDescending(x => x.Score)
+                .OrderByDescending(x => x.RetrievalScore)
                 .Take(topK)
                 .ToList();
         }
