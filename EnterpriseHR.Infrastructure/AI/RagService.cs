@@ -22,9 +22,24 @@ namespace EnterpriseHR.Infrastructure.AI {
             var prompt = BuildPrompt(question, sources);
             var answer = await _chatService.GenerateAnswerAsync(prompt);
 
+            var citations = sources
+                .Select((source, index) => new RagCitation {
+                    SourceNumber = index + 1,
+                    DocumentId = source.DocumentId,
+                    DocumentChunkId = source.DocumentChunkId,
+                    FileName = source.FileName,
+                    Title = source.Title,
+                    Version = source.Version,
+                    PageNumber = source.PageNumber,
+                    SectionTitle = source.SectionTitle,
+                    RetrievalScore = source.RetrievalScore,
+                    IsExpandedContext = source.IsExpandedContext
+            })
+            .ToList();
+
             return new RagAnswer {
                 Answer = answer,
-                Sources = sources
+                Citations = citations
             };
         }
 
