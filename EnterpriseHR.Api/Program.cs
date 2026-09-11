@@ -56,6 +56,9 @@ public partial class Program {
         builder.Services.AddScoped<IRagService, RagService>();
         builder.Services.AddScoped<IContextExpansionService, ContextExpansionService>();
 
+        builder.Services.AddScoped<IFullTextSearchService, FullTextSearchService>();
+        builder.Services.AddScoped<IHybridSearchService, HybridSearchService>();
+
         var app = builder.Build();
 
         // Configure the HTTP request pipeline.
@@ -99,6 +102,18 @@ public partial class Program {
         {
             var result = await ragService.AskAsync(request.Question, request.TopK);
             return Results.Ok(result);
+        });
+
+        app.MapGet("/search/fulltext", async (string query, int? topK, IFullTextSearchService searchService) =>
+        {
+            var results = await searchService.SearchAsync(query, topK ?? 5);
+            return Results.Ok(results);
+        });
+
+        app.MapGet("/search/hybrid", async (string query, int? topK, IHybridSearchService searchService) =>
+        {
+            var results = await searchService.SearchAsync(query, topK ?? 3);
+            return Results.Ok(results);
         });
 
         app.UseHttpsRedirection();
