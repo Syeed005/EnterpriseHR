@@ -52,6 +52,7 @@ namespace EnterpriseHR.Infrastructure.Data {
                 entity.Property(x => x.Content).IsRequired();
                 entity.Property(x => x.SectionTitle).HasMaxLength(500);
                 entity.HasIndex(x => new { x.DocumentPageId, x.ChunkIndex }).IsUnique();
+                entity.Property(x => x.EmbeddingJson);
 
                 entity.HasOne(x => x.DocumentPage)
                     .WithMany(x => x.Chunks)

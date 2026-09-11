@@ -1,5 +1,7 @@
+using EnterpriseHR.Core.AI;
 using EnterpriseHR.Core.Documents;
 using EnterpriseHR.Core.Services;
+using EnterpriseHR.Infrastructure.AI;
 using EnterpriseHR.Infrastructure.Data;
 using EnterpriseHR.Infrastructure.Documents;
 using EnterpriseHR.Infrastructure.Services;
@@ -24,6 +26,18 @@ builder.Services.AddScoped<IDocumentMetadataExtractor, DocumentMetadataExtractor
 builder.Services.AddScoped<ITextChunker, TextChunker>();
 builder.Services.AddScoped<IDocumentChunkingService, DocumentChunkingService>();
 
+builder.Services.AddSingleton<IEmbeddingService>(sp => {
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var apiKey = configuration["OpenAI:ApiKey"];
+
+    if (string.IsNullOrWhiteSpace(apiKey))
+        throw new InvalidOperationException("OpenAI API key is not configured.");
+
+    return new OpenAiEmbeddingService(apiKey);
+});
+
+builder.Services.AddScoped<IDocumentEmbeddingService, DocumentEmbeddingService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -45,6 +59,15 @@ app.MapPost("/documents/ingest", async (string filePath, IDocumentIngestionServi
 app.MapPost("/documents/{documentId:int}/chunks", async (int documentId, IDocumentChunkingService chunkingService) => {
     var chunkCount = await chunkingService.ChunkDocumentAsync(documentId);
     return Results.Ok(new { documentId, chunkCount });
+});
+
+app.MapPost("/documents/{documentId:int}/embeddings", async (int documentId, IDocumentEmbeddingService embeddingService) => {
+    var count = await embeddingService.GenerateEmbeddingsAsync(documentId);
+
+    return Results.Ok(new {
+        documentId,
+        embeddingsGenerated = count
+    });
 });
 
 app.UseHttpsRedirection();

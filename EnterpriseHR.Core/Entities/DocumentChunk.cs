@@ -10,6 +10,7 @@ namespace EnterpriseHR.Core.Entities {
         public string? SectionTitle { get; set; }
         public string Content { get; set; } = string.Empty;
         public int CharacterCount { get; set; }
+        public string? EmbeddingJson { get; set; }
         public DocumentPage DocumentPage { get; set; } = null!;
     }
 }
