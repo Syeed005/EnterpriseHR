@@ -5,11 +5,11 @@ using System.Text;
 
 namespace EnterpriseHR.Infrastructure.AI {
     public class RagService : IRagService {
-        private readonly ISemanticSearchService _searchService;
+        private readonly IHybridSearchService _searchService;
         private readonly IChatService _chatService;
         private readonly IContextExpansionService _contextExpansionService;
 
-        public RagService(ISemanticSearchService searchService, IChatService chatService, IContextExpansionService contextExpansionService) {
+        public RagService(IHybridSearchService searchService, IChatService chatService, IContextExpansionService contextExpansionService) {
             _searchService = searchService;
             _chatService = chatService;
             _contextExpansionService = contextExpansionService;
@@ -32,9 +32,17 @@ namespace EnterpriseHR.Infrastructure.AI {
                     Version = source.Version,
                     PageNumber = source.PageNumber,
                     SectionTitle = source.SectionTitle,
-                    RetrievalScore = source.RetrievalScore,
+
+                    SemanticRank = source.SemanticRank,
+                    SemanticScore = source.SemanticScore,
+
+                    FullTextRank = source.FullTextRank,
+                    FullTextScore = source.FullTextScore,
+
+                    RrfScore = source.RrfScore,
+
                     IsExpandedContext = source.IsExpandedContext
-            })
+                })
             .ToList();
 
             return new RagAnswer {
@@ -43,7 +51,7 @@ namespace EnterpriseHR.Infrastructure.AI {
             };
         }
 
-        private static string BuildPrompt(string question, IReadOnlyList<SemanticSearchResult> sources) {
+        private static string BuildPrompt(string question, IReadOnlyList<RetrievalResult> sources) {
             var context = new StringBuilder();
 
             for (var i = 0; i < sources.Count; i++) {

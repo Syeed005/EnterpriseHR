@@ -13,20 +13,20 @@ namespace EnterpriseHR.Infrastructure.AI {
             _fullTextSearchService = fullTextSearchService;
         }
 
-        public async Task<IReadOnlyList<HybridSearchResult>> SearchAsync(string query, int topK = 3) {
+        public async Task<IReadOnlyList<RetrievalResult>> SearchAsync(string query, int topK = 3) {
             const int candidateK = 10;
             const int rrfK = 60;
 
             var semanticResults = await _semanticSearchService.SearchAsync(query, candidateK);
             var fullTextResults = await _fullTextSearchService.SearchAsync(query, candidateK);
 
-            var results = new Dictionary<int, HybridSearchResult>();
+            var results = new Dictionary<int, RetrievalResult>();
 
             for (var i = 0; i < semanticResults.Count; i++) {
                 var item = semanticResults[i];
                 var rank = i + 1;
 
-                results[item.DocumentChunkId] = new HybridSearchResult {
+                results[item.DocumentChunkId] = new RetrievalResult {
                     DocumentChunkId = item.DocumentChunkId,
                     DocumentId = item.DocumentId,
                     PageNumber = item.PageNumber,
@@ -51,7 +51,7 @@ namespace EnterpriseHR.Infrastructure.AI {
                     existing.FullTextScore = item.FullTextRank;
                     existing.RrfScore += 1.0 / (rrfK + rank);
                 } else {
-                    results[item.DocumentChunkId] = new HybridSearchResult {
+                    results[item.DocumentChunkId] = new RetrievalResult {
                         DocumentChunkId = item.DocumentChunkId,
                         DocumentId = item.DocumentId,
                         PageNumber = item.PageNumber,

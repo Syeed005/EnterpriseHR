@@ -4,6 +4,6 @@ using System.Text;
 
 namespace EnterpriseHR.Core.AI {
     public interface IHybridSearchService {
-        Task<IReadOnlyList<HybridSearchResult>> SearchAsync(string query, int topK = 3);
+        Task<IReadOnlyList<RetrievalResult>> SearchAsync(string query, int topK = 3);
     }
 }

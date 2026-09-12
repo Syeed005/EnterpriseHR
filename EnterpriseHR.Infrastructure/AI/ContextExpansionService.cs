@@ -13,8 +13,8 @@ namespace EnterpriseHR.Infrastructure.AI {
             _dbContext = dbContext;
         }
 
-        public async Task<IReadOnlyList<SemanticSearchResult>> ExpandAsync(IReadOnlyList<SemanticSearchResult> results) {
-            var expanded = new Dictionary<int, SemanticSearchResult>();
+        public async Task<IReadOnlyList<RetrievalResult>> ExpandAsync(IReadOnlyList<RetrievalResult> results) {
+            var expanded = new Dictionary<int, RetrievalResult>();
 
             foreach (var result in results) {
                 expanded[result.DocumentChunkId] = result;
@@ -29,7 +29,7 @@ namespace EnterpriseHR.Infrastructure.AI {
                         c.DocumentPage.PageNumber == result.PageNumber &&
                         c.SectionTitle == result.SectionTitle)
                     .OrderBy(c => c.ChunkIndex)
-                    .Select(c => new SemanticSearchResult {
+                    .Select(c => new RetrievalResult {
                         DocumentChunkId = c.DocumentChunkId,
                         DocumentId = c.DocumentPage.DocumentId,
                         PageNumber = c.DocumentPage.PageNumber,
@@ -39,7 +39,6 @@ namespace EnterpriseHR.Infrastructure.AI {
                         FileName = c.DocumentPage.Document.FileName,
                         Title = c.DocumentPage.Document.Title,
                         Version = c.DocumentPage.Document.Version,
-                        RetrievalScore = null,
                         IsExpandedContext = true,
                         ExpandedFromChunkId = result.DocumentChunkId
                     })

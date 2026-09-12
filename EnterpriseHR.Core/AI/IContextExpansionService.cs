@@ -4,6 +4,6 @@ using System.Text;
 
 namespace EnterpriseHR.Core.AI {
     public interface IContextExpansionService {
-        Task<IReadOnlyList<SemanticSearchResult>> ExpandAsync(IReadOnlyList<SemanticSearchResult> results);
+        Task<IReadOnlyList<RetrievalResult>> ExpandAsync(IReadOnlyList<RetrievalResult> results);
     }
 }
