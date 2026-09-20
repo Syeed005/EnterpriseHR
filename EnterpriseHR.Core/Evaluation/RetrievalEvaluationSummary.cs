@@ -11,6 +11,9 @@ namespace EnterpriseHR.Core.Evaluation {
         public double HitRateAtK { get; set; }
         public double Top1HitRate { get; set; }
         public double MeanReciprocalRank { get; set; }
+        public double AverageLatencyMs { get; set; }
+        public long MinLatencyMs { get; set; }
+        public long MaxLatencyMs { get; set; }
         public IReadOnlyList<RetrievalEvaluationResult> Results { get; set; } = [];
     }
 }

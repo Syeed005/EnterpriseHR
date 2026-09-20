@@ -2,6 +2,7 @@
 using EnterpriseHR.Core.Evaluation;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace EnterpriseHR.Infrastructure.Evaluation {
@@ -16,7 +17,9 @@ namespace EnterpriseHR.Infrastructure.Evaluation {
             var results = new List<RetrievalEvaluationResult>();
 
             foreach (var evaluationCase in cases) {
+                var stopwatch = Stopwatch.StartNew();
                 var searchResults = await _hybridSearchService.SearchAsync(evaluationCase.Question, topK);
+                stopwatch.Stop();
 
                 var retrievedChunkIds = searchResults
                     .Select(x => x.DocumentChunkId)
@@ -31,7 +34,8 @@ namespace EnterpriseHR.Infrastructure.Evaluation {
                     ExpectedSectionTitle = evaluationCase.ExpectedSectionTitle,
                     FoundInTopK = index >= 0,
                     ActualRank = index >= 0 ? index + 1 : null,
-                    RetrievedChunkIds = retrievedChunkIds
+                    RetrievedChunkIds = retrievedChunkIds,
+                    LatencyMs = stopwatch.ElapsedMilliseconds
                 });
             }
 
@@ -40,8 +44,11 @@ namespace EnterpriseHR.Infrastructure.Evaluation {
             var failedCases = totalCases - passedCases;
             var top1Hits = results.Count(r => r.ActualRank == 1);
 
-            var reciprocalRankSum = results.Sum(r =>
-                r.ActualRank.HasValue ? 1.0 / r.ActualRank.Value : 0.0);
+            var reciprocalRankSum = results.Sum(r => r.ActualRank.HasValue ? 1.0 / r.ActualRank.Value : 0.0);
+
+            var averageLatencyMs = results.Count > 0 ? results.Average(r => r.LatencyMs) : 0;
+            var minLatencyMs = results.Count > 0 ? results.Min(r => r.LatencyMs) : 0;
+            var maxLatencyMs = results.Count > 0 ? results.Max(r => r.LatencyMs) : 0;
 
             return new RetrievalEvaluationSummary {
                 TopK = topK,
@@ -51,6 +58,9 @@ namespace EnterpriseHR.Infrastructure.Evaluation {
                 HitRateAtK = totalCases > 0 ? (double)passedCases / totalCases : 0,
                 Top1HitRate = totalCases > 0 ? (double)top1Hits / totalCases : 0,
                 MeanReciprocalRank = totalCases > 0 ? reciprocalRankSum / totalCases : 0,
+                AverageLatencyMs = averageLatencyMs,
+                MinLatencyMs = minLatencyMs,
+                MaxLatencyMs = maxLatencyMs,
                 Results = results
             };
         }

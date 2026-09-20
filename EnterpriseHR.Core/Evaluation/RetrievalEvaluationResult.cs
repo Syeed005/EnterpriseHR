@@ -11,6 +11,7 @@ namespace EnterpriseHR.Core.Evaluation {
 
         public bool FoundInTopK { get; set; }
         public int? ActualRank { get; set; }
+        public long LatencyMs { get; set; }
 
         public IReadOnlyList<int> RetrievedChunkIds { get; set; } = [];
     }
