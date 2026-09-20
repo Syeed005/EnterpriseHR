@@ -15,7 +15,6 @@ namespace EnterpriseHR.Infrastructure.AI {
             // Call OpenAI embeddings API
             // Return vector as float[]
             var embedding = await _client.GenerateEmbeddingAsync(text);
-
             return embedding.Value.ToFloats().ToArray();
         }
     }

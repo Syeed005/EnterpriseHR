@@ -9,11 +9,13 @@ namespace EnterpriseHR.Infrastructure.AI {
         private readonly IHybridSearchService _searchService;
         private readonly IChatService _chatService;
         private readonly IContextExpansionService _contextExpansionService;
+        private readonly IAiCostCalculator _costCalculator;
 
-        public RagService(IHybridSearchService searchService, IChatService chatService, IContextExpansionService contextExpansionService) {
+        public RagService(IHybridSearchService searchService, IChatService chatService, IContextExpansionService contextExpansionService, IAiCostCalculator costCalculator) {
             _searchService = searchService;
             _chatService = chatService;
             _contextExpansionService = contextExpansionService;
+            _costCalculator = costCalculator;
         }
 
         public async Task<RagAnswer> AskAsync(string question, int topK = 3) {
@@ -39,16 +41,21 @@ namespace EnterpriseHR.Infrastructure.AI {
             }
 
             var prompt = BuildPrompt(question, sources);
+            AiCostResult cost;
 
             ChatGenerationResult generation;
             using (var llmActivity = EnterpriseHrTelemetry.ActivitySource.StartActivity("llm.generate")) {
                 generation = await _chatService.GenerateAnswerAsync(prompt);
+                cost = _costCalculator.Calculate(generation.Model, generation.InputTokens, generation.OutputTokens);
 
                 llmActivity?.SetTag("gen_ai.provider", generation.Provider);
                 llmActivity?.SetTag("gen_ai.model", generation.Model);
                 llmActivity?.SetTag("gen_ai.input_tokens", generation.InputTokens);
                 llmActivity?.SetTag("gen_ai.output_tokens", generation.OutputTokens);
                 llmActivity?.SetTag("gen_ai.total_tokens", generation.TotalTokens);
+                llmActivity?.SetTag("gen_ai.input_cost_usd", (double)cost.InputCostUsd);
+                llmActivity?.SetTag("gen_ai.output_cost_usd", (double)cost.OutputCostUsd);
+                llmActivity?.SetTag("gen_ai.total_cost_usd", (double)cost.TotalCostUsd);
             }
 
             var citations = sources

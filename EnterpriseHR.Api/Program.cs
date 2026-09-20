@@ -78,6 +78,7 @@ public partial class Program {
                     .AddHttpClientInstrumentation()
                     .AddConsoleExporter();
             });
+        builder.Services.AddSingleton<IAiCostCalculator, AiCostCalculator>();
 
         var app = builder.Build();
 
