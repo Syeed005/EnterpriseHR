@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 
-namespace EnterpriseHR.Infrastructure.Evaluation {
+namespace EnterpriseHR.Infrastructure.Evaluation.Retrieval {
     public class RetrievalEvaluationService : IRetrievalEvaluationService {
         private readonly IHybridSearchService _hybridSearchService;
 

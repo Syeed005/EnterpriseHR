@@ -40,9 +40,15 @@ namespace EnterpriseHR.Infrastructure.AI {
 
             var prompt = BuildPrompt(question, sources);
 
-            string answer;
+            ChatGenerationResult generation;
             using (var llmActivity = EnterpriseHrTelemetry.ActivitySource.StartActivity("llm.generate")) {
-                answer = await _chatService.GenerateAnswerAsync(prompt);
+                generation = await _chatService.GenerateAnswerAsync(prompt);
+
+                llmActivity?.SetTag("gen_ai.provider", generation.Provider);
+                llmActivity?.SetTag("gen_ai.model", generation.Model);
+                llmActivity?.SetTag("gen_ai.input_tokens", generation.InputTokens);
+                llmActivity?.SetTag("gen_ai.output_tokens", generation.OutputTokens);
+                llmActivity?.SetTag("gen_ai.total_tokens", generation.TotalTokens);
             }
 
             var citations = sources
@@ -69,7 +75,7 @@ namespace EnterpriseHR.Infrastructure.AI {
             .ToList();
 
             return new RagAnswer {
-                Answer = answer,
+                Answer = generation.Content,
                 Citations = citations
             };
         }

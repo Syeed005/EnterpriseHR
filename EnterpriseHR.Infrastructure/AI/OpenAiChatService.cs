@@ -12,10 +12,18 @@ namespace EnterpriseHR.Infrastructure.AI {
             _client = new ChatClient("gpt-5-mini", apiKey);
         }
 
-        public async Task<string> GenerateAnswerAsync(string prompt) {
+        public async Task<ChatGenerationResult> GenerateAnswerAsync(string prompt) {
             var completion = await _client.CompleteChatAsync(prompt);
+            var result = completion.Value;
 
-            return completion.Value.Content[0].Text;
+            return new ChatGenerationResult {
+                Content = result.Content[0].Text,
+                InputTokens = result.Usage.InputTokenCount,
+                OutputTokens = result.Usage.OutputTokenCount,
+                TotalTokens = result.Usage.TotalTokenCount,
+                Provider = "OpenAI",
+                Model = "gpt-5-mini"
+            };
         }
     }
 }

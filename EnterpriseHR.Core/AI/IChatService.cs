@@ -4,6 +4,6 @@ using System.Text;
 
 namespace EnterpriseHR.Core.AI {
     public interface IChatService {
-        Task<string> GenerateAnswerAsync(string prompt);
+        Task<ChatGenerationResult> GenerateAnswerAsync(string prompt);
     }
 }
