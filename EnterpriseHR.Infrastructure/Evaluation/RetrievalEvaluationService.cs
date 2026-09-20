@@ -1,5 +1,5 @@
 ﻿using EnterpriseHR.Core.AI;
-using EnterpriseHR.Core.Evaluation;
+using EnterpriseHR.Core.Evaluation.Retrieval;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

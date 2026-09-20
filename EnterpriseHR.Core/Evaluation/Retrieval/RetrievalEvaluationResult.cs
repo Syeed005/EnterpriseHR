@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace EnterpriseHR.Core.Evaluation {
+namespace EnterpriseHR.Core.Evaluation.Retrieval {
     public class RetrievalEvaluationResult {
         public string Id { get; set; } = string.Empty;
         public string Question { get; set; } = string.Empty;

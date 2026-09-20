@@ -1,11 +1,13 @@
 using EnterpriseHR.Core.AI;
 using EnterpriseHR.Core.Documents;
-using EnterpriseHR.Core.Evaluation;
+using EnterpriseHR.Core.Evaluation.Rag;
+using EnterpriseHR.Core.Evaluation.Retrieval;
 using EnterpriseHR.Core.Services;
 using EnterpriseHR.Infrastructure.AI;
 using EnterpriseHR.Infrastructure.Data;
 using EnterpriseHR.Infrastructure.Documents;
 using EnterpriseHR.Infrastructure.Evaluation;
+using EnterpriseHR.Infrastructure.Evaluation.Rag;
 using EnterpriseHR.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
@@ -63,6 +65,7 @@ public partial class Program {
 
         builder.Services.AddScoped<IDocumentLifecycleService, DocumentLifecycleService>();
         builder.Services.AddScoped<IRetrievalEvaluationService, RetrievalEvaluationService>();
+        builder.Services.AddScoped<IRagEvaluationService, RagEvaluationService>();
 
         var app = builder.Build();
 
@@ -129,6 +132,12 @@ public partial class Program {
         app.MapPost("/evaluation/retrieval", async (int? topK, IRetrievalEvaluationService evaluationService) =>
         {
             var summary = await evaluationService.RunAsync(topK ?? 3);
+            return Results.Ok(summary);
+        });
+
+        app.MapPost("/evaluation/rag", async (IRagEvaluationService evaluationService) =>
+        {
+            var summary = await evaluationService.RunAsync();
             return Results.Ok(summary);
         });
 

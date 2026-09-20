@@ -2,18 +2,19 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace EnterpriseHR.Core.Evaluation {
-    public class RetrievalEvaluationSummary {
-        public int TopK { get; set; }
+namespace EnterpriseHR.Core.Evaluation.Rag {
+    public class RagEvaluationSummary {
         public int TotalCases { get; set; }
         public int PassedCases { get; set; }
         public int FailedCases { get; set; }
-        public double HitRateAtK { get; set; }
-        public double Top1HitRate { get; set; }
-        public double MeanReciprocalRank { get; set; }
+
+        public double AnswerFactSuccessRate { get; set; }
+        public double CitationSuccessRate { get; set; }
+
         public double AverageLatencyMs { get; set; }
         public long MinLatencyMs { get; set; }
         public long MaxLatencyMs { get; set; }
-        public IReadOnlyList<RetrievalEvaluationResult> Results { get; set; } = [];
+
+        public IReadOnlyList<RagEvaluationResult> Results { get; set; } = [];
     }
 }
