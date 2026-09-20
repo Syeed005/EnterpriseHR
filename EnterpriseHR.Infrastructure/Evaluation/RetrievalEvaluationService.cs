@@ -11,7 +11,7 @@ namespace EnterpriseHR.Infrastructure.Evaluation {
         public RetrievalEvaluationService(IHybridSearchService hybridSearchService) {
             _hybridSearchService = hybridSearchService;
         }
-        public async Task<IReadOnlyList<RetrievalEvaluationResult>> RunAsync(int topK = 3) {
+        public async Task<RetrievalEvaluationSummary> RunAsync(int topK = 3) {
             var cases = GetEvaluationCases();
             var results = new List<RetrievalEvaluationResult>();
 
@@ -35,7 +35,24 @@ namespace EnterpriseHR.Infrastructure.Evaluation {
                 });
             }
 
-            return results;
+            var totalCases = results.Count;
+            var passedCases = results.Count(r => r.FoundInTopK);
+            var failedCases = totalCases - passedCases;
+            var top1Hits = results.Count(r => r.ActualRank == 1);
+
+            var reciprocalRankSum = results.Sum(r =>
+                r.ActualRank.HasValue ? 1.0 / r.ActualRank.Value : 0.0);
+
+            return new RetrievalEvaluationSummary {
+                TopK = topK,
+                TotalCases = totalCases,
+                PassedCases = passedCases,
+                FailedCases = failedCases,
+                HitRateAtK = totalCases > 0 ? (double)passedCases / totalCases : 0,
+                Top1HitRate = totalCases > 0 ? (double)top1Hits / totalCases : 0,
+                MeanReciprocalRank = totalCases > 0 ? reciprocalRankSum / totalCases : 0,
+                Results = results
+            };
         }
 
         private static IReadOnlyList<RetrievalEvaluationCase> GetEvaluationCases() {

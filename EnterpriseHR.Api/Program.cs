@@ -128,8 +128,8 @@ public partial class Program {
 
         app.MapPost("/evaluation/retrieval", async (int? topK, IRetrievalEvaluationService evaluationService) =>
         {
-            var results = await evaluationService.RunAsync(topK ?? 3);
-            return Results.Ok(results);
+            var summary = await evaluationService.RunAsync(topK ?? 3);
+            return Results.Ok(summary);
         });
 
         app.UseHttpsRedirection();

@@ -4,6 +4,6 @@ using System.Text;
 
 namespace EnterpriseHR.Core.Evaluation {
     public interface IRetrievalEvaluationService {
-        Task<IReadOnlyList<RetrievalEvaluationResult>> RunAsync(int topK = 3);
+        Task<RetrievalEvaluationSummary> RunAsync(int topK = 3);
     }
 }
