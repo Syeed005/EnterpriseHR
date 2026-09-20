@@ -1,4 +1,5 @@
 ﻿using EnterpriseHR.Core.AI;
+using EnterpriseHR.Core.Observability;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -17,40 +18,28 @@ namespace EnterpriseHR.Infrastructure.AI {
             const int candidateK = 10;
             const int rrfK = 60;
 
-            var semanticResults = await _semanticSearchService.SearchAsync(query, candidateK);
-            var fullTextResults = await _fullTextSearchService.SearchAsync(query, candidateK);
+            IReadOnlyList<SemanticSearchResult> semanticResults;
+            using (var activity = EnterpriseHrTelemetry.ActivitySource.StartActivity("retrieval.semantic")) {
+                semanticResults = await _semanticSearchService.SearchAsync(query, candidateK);
+
+                activity?.SetTag("semantic.candidate_count", semanticResults.Count);
+            }
+
+            IReadOnlyList<FullTextSearchResult> fullTextResults;
+            using (var activity = EnterpriseHrTelemetry.ActivitySource.StartActivity("retrieval.fulltext")) {
+                fullTextResults = await _fullTextSearchService.SearchAsync(query, candidateK);
+
+                activity?.SetTag("fulltext.candidate_count", fullTextResults.Count);
+            }
+
 
             var results = new Dictionary<int, RetrievalResult>();
 
-            for (var i = 0; i < semanticResults.Count; i++) {
-                var item = semanticResults[i];
-                var rank = i + 1;
+            using (var activity = EnterpriseHrTelemetry.ActivitySource.StartActivity("retrieval.rrf")) {
+                for (var i = 0; i < semanticResults.Count; i++) {
+                    var item = semanticResults[i];
+                    var rank = i + 1;
 
-                results[item.DocumentChunkId] = new RetrievalResult {
-                    DocumentChunkId = item.DocumentChunkId,
-                    DocumentId = item.DocumentId,
-                    PageNumber = item.PageNumber,
-                    ChunkIndex = item.ChunkIndex,
-                    SectionTitle = item.SectionTitle,
-                    Content = item.Content,
-                    SemanticRank = rank,
-                    SemanticScore = item.RetrievalScore,
-                    RrfScore = 1.0 / (rrfK + rank),
-                    FileName = item.FileName,
-                    Title = item.Title,
-                    Version = item.Version
-                };
-            }
-
-            for (var i = 0; i < fullTextResults.Count; i++) {
-                var item = fullTextResults[i];
-                var rank = i + 1;
-
-                if (results.TryGetValue(item.DocumentChunkId, out var existing)) {
-                    existing.FullTextRank = rank;
-                    existing.FullTextScore = item.FullTextRank;
-                    existing.RrfScore += 1.0 / (rrfK + rank);
-                } else {
                     results[item.DocumentChunkId] = new RetrievalResult {
                         DocumentChunkId = item.DocumentChunkId,
                         DocumentId = item.DocumentId,
@@ -58,15 +47,44 @@ namespace EnterpriseHR.Infrastructure.AI {
                         ChunkIndex = item.ChunkIndex,
                         SectionTitle = item.SectionTitle,
                         Content = item.Content,
-                        FullTextRank = rank,
-                        FullTextScore = item.FullTextRank,
+                        SemanticRank = rank,
+                        SemanticScore = item.RetrievalScore,
                         RrfScore = 1.0 / (rrfK + rank),
                         FileName = item.FileName,
                         Title = item.Title,
                         Version = item.Version
                     };
                 }
+
+                for (var i = 0; i < fullTextResults.Count; i++) {
+                    var item = fullTextResults[i];
+                    var rank = i + 1;
+
+                    if (results.TryGetValue(item.DocumentChunkId, out var existing)) {
+                        existing.FullTextRank = rank;
+                        existing.FullTextScore = item.FullTextRank;
+                        existing.RrfScore += 1.0 / (rrfK + rank);
+                    } else {
+                        results[item.DocumentChunkId] = new RetrievalResult {
+                            DocumentChunkId = item.DocumentChunkId,
+                            DocumentId = item.DocumentId,
+                            PageNumber = item.PageNumber,
+                            ChunkIndex = item.ChunkIndex,
+                            SectionTitle = item.SectionTitle,
+                            Content = item.Content,
+                            FullTextRank = rank,
+                            FullTextScore = item.FullTextRank,
+                            RrfScore = 1.0 / (rrfK + rank),
+                            FileName = item.FileName,
+                            Title = item.Title,
+                            Version = item.Version
+                        };
+                    }
+                }
+                activity?.SetTag("rrf.result_count", results.Count);
             }
+
+                
 
             return results.Values
                 .OrderByDescending(x => x.RrfScore)

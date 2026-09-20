@@ -2,6 +2,7 @@ using EnterpriseHR.Core.AI;
 using EnterpriseHR.Core.Documents;
 using EnterpriseHR.Core.Evaluation.Rag;
 using EnterpriseHR.Core.Evaluation.Retrieval;
+using EnterpriseHR.Core.Observability;
 using EnterpriseHR.Core.Services;
 using EnterpriseHR.Infrastructure.AI;
 using EnterpriseHR.Infrastructure.Data;
@@ -10,6 +11,8 @@ using EnterpriseHR.Infrastructure.Evaluation;
 using EnterpriseHR.Infrastructure.Evaluation.Rag;
 using EnterpriseHR.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
 
 public partial class Program {
@@ -66,6 +69,15 @@ public partial class Program {
         builder.Services.AddScoped<IDocumentLifecycleService, DocumentLifecycleService>();
         builder.Services.AddScoped<IRetrievalEvaluationService, RetrievalEvaluationService>();
         builder.Services.AddScoped<IRagEvaluationService, RagEvaluationService>();
+        builder.Services.AddOpenTelemetry()
+            .ConfigureResource(resource => resource.AddService("EnterpriseHR.Api"))
+            .WithTracing(tracing => {
+                tracing
+                    .AddSource(EnterpriseHrTelemetry.ActivitySourceName)
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddConsoleExporter();
+            });
 
         var app = builder.Build();
 

@@ -1,4 +1,5 @@
 ﻿using EnterpriseHR.Core.AI;
+using EnterpriseHR.Core.Observability;
 using EnterpriseHR.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -17,14 +18,23 @@ namespace EnterpriseHR.Infrastructure.AI {
         }
 
         public async Task<IReadOnlyList<SemanticSearchResult>> SearchAsync(string query, int topK = 3) {
-            var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query);
+            float[] queryEmbedding;
+
+            using (var activity = EnterpriseHrTelemetry.ActivitySource.StartActivity("embedding.generate")) {
+                queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query);
+
+                activity?.SetTag("embedding.dimension", queryEmbedding.Length);
+            }
+
+            using var loadActivity = EnterpriseHrTelemetry.ActivitySource.StartActivity("semantic.load_candidates");
 
             var chunks = await _dbContext.DocumentChunks
                 .AsNoTracking()
-                .Where(x => x.EmbeddingJson != null
-                      && x.EmbeddingJson != ""
-                      && x.DocumentPage.Document.Status == "Active"
-                ).Select(x => new {
+                .Where(x =>
+                    x.EmbeddingJson != null &&
+                    x.EmbeddingJson != "" &&
+                    x.DocumentPage.Document.Status == "Active")
+                .Select(x => new {
                     x.DocumentChunkId,
                     x.ChunkIndex,
                     x.SectionTitle,
@@ -38,6 +48,10 @@ namespace EnterpriseHR.Infrastructure.AI {
                 })
                 .ToListAsync();
 
+            loadActivity?.SetTag("semantic.loaded_count", chunks.Count);
+            loadActivity?.Stop();
+
+            using var scoreActivity = EnterpriseHrTelemetry.ActivitySource.StartActivity("semantic.score");
             var results = new List<SemanticSearchResult>();
 
             foreach (var chunk in chunks) {
@@ -63,6 +77,9 @@ namespace EnterpriseHR.Infrastructure.AI {
                     ExpandedFromChunkId = null
                 });
             }
+            scoreActivity?.SetTag("semantic.scored_count", chunks.Count);
+            scoreActivity?.SetTag("semantic.result_count", results.Count);
+            scoreActivity?.Stop();
 
             return results
                 .OrderByDescending(x => x.RetrievalScore)

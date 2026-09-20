@@ -1,4 +1,5 @@
 ﻿using EnterpriseHR.Core.AI;
+using EnterpriseHR.Core.Observability;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -16,11 +17,33 @@ namespace EnterpriseHR.Infrastructure.AI {
         }
 
         public async Task<RagAnswer> AskAsync(string question, int topK = 3) {
-            var searchResults = await _searchService.SearchAsync(question, topK);
-            var sources = await _contextExpansionService.ExpandAsync(searchResults);
+            using var activity = EnterpriseHrTelemetry.ActivitySource.StartActivity("rag.ask");
+            activity?.SetTag("rag.top_k", topK);
+
+            IReadOnlyList<RetrievalResult> searchResults;
+            using (var searchActivity = EnterpriseHrTelemetry.ActivitySource.StartActivity("retrieval.hybrid")) {
+                searchActivity?.SetTag("retrieval.top_k", topK);
+
+                searchResults = await _searchService.SearchAsync(question, topK);
+
+                searchActivity?.SetTag("retrieval.result_count", searchResults.Count);
+            }
+
+            IReadOnlyList<RetrievalResult> sources;
+            using (var expansionActivity = EnterpriseHrTelemetry.ActivitySource.StartActivity("context.expand")) {
+                expansionActivity?.SetTag("context.input_count", searchResults.Count);
+
+                sources = await _contextExpansionService.ExpandAsync(searchResults);
+
+                expansionActivity?.SetTag("context.output_count", sources.Count);
+            }
 
             var prompt = BuildPrompt(question, sources);
-            var answer = await _chatService.GenerateAnswerAsync(prompt);
+
+            string answer;
+            using (var llmActivity = EnterpriseHrTelemetry.ActivitySource.StartActivity("llm.generate")) {
+                answer = await _chatService.GenerateAnswerAsync(prompt);
+            }
 
             var citations = sources
                 .Select((source, index) => new RagCitation {
