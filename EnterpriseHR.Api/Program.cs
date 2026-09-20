@@ -1,9 +1,11 @@
 using EnterpriseHR.Core.AI;
 using EnterpriseHR.Core.Documents;
+using EnterpriseHR.Core.Evaluation;
 using EnterpriseHR.Core.Services;
 using EnterpriseHR.Infrastructure.AI;
 using EnterpriseHR.Infrastructure.Data;
 using EnterpriseHR.Infrastructure.Documents;
+using EnterpriseHR.Infrastructure.Evaluation;
 using EnterpriseHR.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
@@ -59,6 +61,9 @@ public partial class Program {
         builder.Services.AddScoped<IFullTextSearchService, FullTextSearchService>();
         builder.Services.AddScoped<IHybridSearchService, HybridSearchService>();
 
+        builder.Services.AddScoped<IDocumentLifecycleService, DocumentLifecycleService>();
+        builder.Services.AddScoped<IRetrievalEvaluationService, RetrievalEvaluationService>();
+
         var app = builder.Build();
 
         // Configure the HTTP request pipeline.
@@ -113,6 +118,17 @@ public partial class Program {
         app.MapGet("/search/hybrid", async (string query, int? topK, IHybridSearchService searchService) =>
         {
             var results = await searchService.SearchAsync(query, topK ?? 3);
+            return Results.Ok(results);
+        });
+
+        app.MapPost("/documents/{documentId:int}/activate", async (int documentId, IDocumentLifecycleService lifecycleService) => {
+            await lifecycleService.ActivateAsync(documentId);
+            return Results.Ok();
+        });
+
+        app.MapPost("/evaluation/retrieval", async (int? topK, IRetrievalEvaluationService evaluationService) =>
+        {
+            var results = await evaluationService.RunAsync(topK ?? 3);
             return Results.Ok(results);
         });
 

@@ -38,6 +38,7 @@ namespace EnterpriseHR.Infrastructure.AI {
                     ON p.DocumentPageId = c.DocumentPageId
                 INNER JOIN Documents d
                     ON d.DocumentId = p.DocumentId
+                WHERE d.Status = 'Active'
                 ORDER BY ft.[RANK] DESC;
                 """;
 

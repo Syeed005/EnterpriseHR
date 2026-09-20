@@ -20,8 +20,11 @@ namespace EnterpriseHR.Infrastructure.AI {
             var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query);
 
             var chunks = await _dbContext.DocumentChunks
-                .Where(x => x.EmbeddingJson != null)
-                .Select(x => new {
+                .AsNoTracking()
+                .Where(x => x.EmbeddingJson != null
+                      && x.EmbeddingJson != ""
+                      && x.DocumentPage.Document.Status == "Active"
+                ).Select(x => new {
                     x.DocumentChunkId,
                     x.ChunkIndex,
                     x.SectionTitle,

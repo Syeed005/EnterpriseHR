@@ -17,6 +17,7 @@ namespace EnterpriseHR.Core.Entities {
         public string? Audience { get; set; }
         public string? Status { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string? PolicyKey { get; set; }
         public ICollection<DocumentPage> Pages { get; set; } = new List<DocumentPage>();
     }
 }
