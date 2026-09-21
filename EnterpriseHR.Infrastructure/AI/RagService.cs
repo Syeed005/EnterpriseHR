@@ -1,6 +1,7 @@
 ﻿using EnterpriseHR.Core.AI;
 using EnterpriseHR.Core.Entities;
 using EnterpriseHR.Core.Observability;
+using EnterpriseHR.Core.Services;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -13,18 +14,26 @@ namespace EnterpriseHR.Infrastructure.AI {
         private readonly IContextExpansionService _contextExpansionService;
         private readonly IAiCostCalculator _costCalculator;
         private readonly IAiUsageService _usageService;
-        public RagService(IHybridSearchService searchService, IChatService chatService, IContextExpansionService contextExpansionService, IAiCostCalculator costCalculator, IAiUsageService usageService) {
+        private readonly IConversationService _conversationService;
+
+        public RagService(IHybridSearchService searchService, IChatService chatService, IContextExpansionService contextExpansionService, IAiCostCalculator costCalculator, IAiUsageService usageService, IConversationService conversationService) {
             _searchService = searchService;
             _chatService = chatService;
             _contextExpansionService = contextExpansionService;
             _costCalculator = costCalculator;
             _usageService = usageService;
+            _conversationService = conversationService;
         }
 
-        public async Task<RagAnswer> AskAsync(string question, int topK = 3) {
+        public async Task<RagAnswer> AskAsync(Guid sessionId, string question, int topK = 3) {
             using var activity = EnterpriseHrTelemetry.ActivitySource.StartActivity("rag.ask");
             activity?.SetTag("rag.top_k", topK);
 
+            // Validate session + store question
+            await _conversationService.AddMessageAsync(sessionId, "user", question);
+
+            // RAG pipeline
+            //Hybrid retrieval
             IReadOnlyList<RetrievalResult> searchResults;
             using (var searchActivity = EnterpriseHrTelemetry.ActivitySource.StartActivity("retrieval.hybrid")) {
                 searchActivity?.SetTag("retrieval.top_k", topK);
@@ -34,6 +43,7 @@ namespace EnterpriseHR.Infrastructure.AI {
                 searchActivity?.SetTag("retrieval.result_count", searchResults.Count);
             }
 
+            //context expansion
             IReadOnlyList<RetrievalResult> sources;
             using (var expansionActivity = EnterpriseHrTelemetry.ActivitySource.StartActivity("context.expand")) {
                 expansionActivity?.SetTag("context.input_count", searchResults.Count);
@@ -43,9 +53,11 @@ namespace EnterpriseHR.Infrastructure.AI {
                 expansionActivity?.SetTag("context.output_count", sources.Count);
             }
 
+            //BuildPrompt
             var prompt = BuildPrompt(question, sources);
             AiCostResult cost;
 
+            //LLM
             ChatGenerationResult generation;
             using (var llmActivity = EnterpriseHrTelemetry.ActivitySource.StartActivity("llm.generate")) {
                 generation = await _chatService.GenerateAnswerAsync(prompt);
@@ -61,28 +73,30 @@ namespace EnterpriseHR.Infrastructure.AI {
                 llmActivity?.SetTag("gen_ai.total_cost_usd", (double)cost.TotalCostUsd);
             }
 
-            var citations = sources
-                .Select((source, index) => new RagCitation {
-                    SourceNumber = index + 1,
-                    DocumentId = source.DocumentId,
-                    DocumentChunkId = source.DocumentChunkId,
-                    FileName = source.FileName,
-                    Title = source.Title,
-                    Version = source.Version,
-                    PageNumber = source.PageNumber,
-                    SectionTitle = source.SectionTitle,
+            //citations
+            var citations = sources.Select((source, index) => new RagCitation {
+                SourceNumber = index + 1,
+                DocumentId = source.DocumentId,
+                DocumentChunkId = source.DocumentChunkId,
+                FileName = source.FileName,
+                Title = source.Title,
+                Version = source.Version,
+                PageNumber = source.PageNumber,
+                SectionTitle = source.SectionTitle,
 
-                    SemanticRank = source.SemanticRank,
-                    SemanticScore = source.SemanticScore,
+                SemanticRank = source.SemanticRank,
+                SemanticScore = source.SemanticScore,
 
-                    FullTextRank = source.FullTextRank,
-                    FullTextScore = source.FullTextScore,
+                FullTextRank = source.FullTextRank,
+                FullTextScore = source.FullTextScore,
 
-                    RrfScore = source.RrfScore,
+                RrfScore = source.RrfScore,
 
-                    IsExpandedContext = source.IsExpandedContext
-                })
-            .ToList();
+                IsExpandedContext = source.IsExpandedContext
+            }).ToList();
+
+            var answer = generation.Content;
+            await _conversationService.AddMessageAsync(sessionId, "assistant", answer);
 
             await _usageService.RecordAsync(new AiUsageRecord {
                 CreatedAtUtc = DateTime.UtcNow,
@@ -99,7 +113,7 @@ namespace EnterpriseHR.Infrastructure.AI {
             });
 
             return new RagAnswer {
-                Answer = generation.Content,
+                Answer = answer,
                 Citations = citations
             };
         }

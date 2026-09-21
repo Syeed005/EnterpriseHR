@@ -4,6 +4,6 @@ using System.Text;
 
 namespace EnterpriseHR.Core.AI {
     public interface IRagService {
-        Task<RagAnswer> AskAsync(string question, int topK = 3);
+        Task<RagAnswer> AskAsync(Guid sessionId, string question, int topK = 3);
     }
 }

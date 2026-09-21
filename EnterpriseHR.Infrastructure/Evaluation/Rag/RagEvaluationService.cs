@@ -1,5 +1,6 @@
 ﻿using EnterpriseHR.Core.AI;
 using EnterpriseHR.Core.Evaluation.Rag;
+using EnterpriseHR.Core.Services;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -8,9 +9,10 @@ using System.Text;
 namespace EnterpriseHR.Infrastructure.Evaluation.Rag {
     public class RagEvaluationService : IRagEvaluationService {
         private readonly IRagService _ragService;
-
-        public RagEvaluationService(IRagService ragService) {
+        private readonly IConversationService _conversationService;
+        public RagEvaluationService(IRagService ragService, IConversationService conversationService) {
             _ragService = ragService;
+            _conversationService = conversationService;
         }
 
         public async Task<RagEvaluationSummary> RunAsync() {
@@ -18,9 +20,10 @@ namespace EnterpriseHR.Infrastructure.Evaluation.Rag {
             var results = new List<RagEvaluationResult>();
 
             foreach (var evaluationCase in cases) {
+                var session = await _conversationService.CreateSessionAsync();
                 var stopwatch = Stopwatch.StartNew();
 
-                var ragResponse = await _ragService.AskAsync(evaluationCase.Question,3);
+                var ragResponse = await _ragService.AskAsync(session.ChatSessionId, evaluationCase.Question,3);
 
                 stopwatch.Stop();
 

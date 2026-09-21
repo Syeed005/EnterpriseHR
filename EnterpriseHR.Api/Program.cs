@@ -123,7 +123,7 @@ public partial class Program {
 
         app.MapPost("/chat/ask", async (RagQuestionRequest request, IRagService ragService) =>
         {
-            var result = await ragService.AskAsync(request.Question, request.TopK);
+            var result = await ragService.AskAsync(request.SessionId, request.Question, request.TopK);
             return Results.Ok(result);
         });
 
