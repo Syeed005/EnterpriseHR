@@ -1,5 +1,6 @@
 using EnterpriseHR.Core.AI;
 using EnterpriseHR.Core.Documents;
+using EnterpriseHR.Core.Evaluation.Conversation;
 using EnterpriseHR.Core.Evaluation.Rag;
 using EnterpriseHR.Core.Evaluation.Retrieval;
 using EnterpriseHR.Core.Observability;
@@ -7,6 +8,7 @@ using EnterpriseHR.Core.Services;
 using EnterpriseHR.Infrastructure.AI;
 using EnterpriseHR.Infrastructure.Data;
 using EnterpriseHR.Infrastructure.Documents;
+using EnterpriseHR.Infrastructure.Evaluation.Conversation;
 using EnterpriseHR.Infrastructure.Evaluation.Rag;
 using EnterpriseHR.Infrastructure.Evaluation.Retrieval;
 using EnterpriseHR.Infrastructure.Services;
@@ -92,6 +94,7 @@ public partial class Program {
             return new OpenAiQuestionContextualizer(apiKey);
         });
 
+        builder.Services.AddScoped<IConversationEvaluationService, ConversationEvaluationService>();
 
         var app = builder.Build();
 
@@ -167,6 +170,11 @@ public partial class Program {
             return Results.Ok(summary);
         });
 
+        app.MapPost("/evaluation/conversation", async (IConversationEvaluationService evaluationService) => {
+            var result = await evaluationService.RunAsync();
+            return Results.Ok(result);
+        });
+
         app.MapGet("/usage/summary", async (IAiUsageService usageService) =>
         {
             var summary = await usageService.GetSummaryAsync();
@@ -215,6 +223,8 @@ public partial class Program {
                 createdAtUtc = message.CreatedAtUtc
             }));
         });
+
+        
 
         app.UseHttpsRedirection();
 
