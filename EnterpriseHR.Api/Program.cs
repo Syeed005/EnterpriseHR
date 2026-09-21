@@ -154,7 +154,7 @@ public partial class Program {
         {
             var result = await ragService.AskAsync(request.SessionId, request.Question, request.TopK);
             return Results.Ok(result);
-        });
+        }).RequireAuthorization(); 
 
         app.MapGet("/search/fulltext", async (string query, int? topK, IFullTextSearchService searchService) =>
         {
@@ -207,10 +207,10 @@ public partial class Program {
             var session = await conversationService.CreateSessionAsync();
 
             return Results.Ok(new {
-                sessionId = session.ChatSessionId,
-                createdAtUtc = session.CreatedAtUtc
+                session.ChatSessionId,
+                session.CreatedAtUtc
             });
-        });
+        }).RequireAuthorization();
 
         app.MapPost("/chat/sessions/{sessionId:guid}/messages", async (Guid sessionId, string role, string content, IConversationService conversationService) =>
         {
@@ -223,7 +223,7 @@ public partial class Program {
                 content = message.Content,
                 createdAtUtc = message.CreatedAtUtc
             });
-        });
+        }).RequireAuthorization();
 
         app.MapGet("/chat/sessions/{sessionId:guid}/messages", async (Guid sessionId, int? count, IConversationService conversationService) =>
         {
@@ -237,7 +237,7 @@ public partial class Program {
                 content = message.Content,
                 createdAtUtc = message.CreatedAtUtc
             }));
-        });
+        }).RequireAuthorization();
 
         app.MapGet("/auth/me", async (ICurrentUserService currentUserService, IApplicationUserService applicationUserService) =>
         {

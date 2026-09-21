@@ -9,16 +9,20 @@ using System.Text;
 namespace EnterpriseHR.Infrastructure.Services {
     public class ConversationService : IConversationService {
         private readonly EnterpriseHrDbContext _dbContext;
+        private readonly IApplicationUserService _applicationUserService;
 
-        public ConversationService(EnterpriseHrDbContext dbContext) {
+        public ConversationService(EnterpriseHrDbContext dbContext, IApplicationUserService applicationUserService) {
             _dbContext = dbContext;
+            _applicationUserService = applicationUserService;
         }
 
         public async Task<ChatSession> CreateSessionAsync() {
+            var user = await _applicationUserService.GetOrCreateCurrentUserAsync();
             var now = DateTime.UtcNow;
 
             var session = new ChatSession {
                 ChatSessionId = Guid.NewGuid(),
+                ApplicationUserId = user.ApplicationUserId,
                 CreatedAtUtc = now,
                 LastActivityAtUtc = now
             };
@@ -30,7 +34,10 @@ namespace EnterpriseHR.Infrastructure.Services {
         }
 
         public async Task<ChatMessage> AddMessageAsync(Guid sessionId, string role, string content) {
-            var session = await _dbContext.ChatSessions.FirstOrDefaultAsync(x => x.ChatSessionId == sessionId);
+            var user = await _applicationUserService.GetOrCreateCurrentUserAsync();
+            var session = await _dbContext.ChatSessions
+                .SingleOrDefaultAsync(x =>x.ChatSessionId == sessionId &&
+                                          x.ApplicationUserId == user.ApplicationUserId);
 
             if (session == null)
                 throw new InvalidOperationException($"Chat session '{sessionId}' was not found.");
@@ -53,13 +60,23 @@ namespace EnterpriseHR.Infrastructure.Services {
         }
 
         public async Task<IReadOnlyList<ChatMessage>> GetRecentMessagesAsync(Guid sessionId, int count = 6) {
-            return await _dbContext.ChatMessages
+            var user = await _applicationUserService.GetOrCreateCurrentUserAsync();
+            var ownsSession = await _dbContext.ChatSessions
+                                .AnyAsync(x => x.ChatSessionId == sessionId &&
+                                               x.ApplicationUserId == user.ApplicationUserId);
+            if (!ownsSession)
+                throw new UnauthorizedAccessException("The chat session was not found or is not accessible.");
+
+            var messages = await _dbContext.ChatMessages
                 .AsNoTracking()
                 .Where(x => x.ChatSessionId == sessionId)
                 .OrderByDescending(x => x.CreatedAtUtc)
                 .Take(count)
-                .OrderBy(x => x.CreatedAtUtc)
                 .ToListAsync();
+
+            return messages
+                .OrderBy(x => x.CreatedAtUtc)
+                .ToList();
         }
     }
 }
