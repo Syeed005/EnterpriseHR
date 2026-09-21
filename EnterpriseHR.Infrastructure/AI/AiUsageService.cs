@@ -19,14 +19,25 @@ namespace EnterpriseHR.Infrastructure.AI {
             await _dbContext.SaveChangesAsync();
         }
 
-        public async Task<AiUsageSummary> GetSummaryAsync() {
-            var records = await _dbContext.AiUsageRecords
-                .AsNoTracking()
-                .ToListAsync();
+        public Task<AiUsageSummary> GetSummaryAsync() {
+            return GetSummaryAsync(null, null);
+        }
+
+        public async Task<AiUsageSummary> GetSummaryAsync(DateTime? fromUtc, DateTime? toUtc) {
+            var query = _dbContext.AiUsageRecords.AsNoTracking();
+
+            if (fromUtc.HasValue)
+                query = query.Where(x => x.CreatedAtUtc >= fromUtc.Value);
+
+            if (toUtc.HasValue)
+                query = query.Where(x => x.CreatedAtUtc < toUtc.Value);
+
+            var records = await query.ToListAsync();
 
             if (records.Count == 0)
                 return new AiUsageSummary();
-
+            
+            //for better optimization and scalability these aggregation should be done in sql side
             return new AiUsageSummary {
                 RequestCount = records.Count,
                 TotalInputTokens = records.Sum(x => (long)x.InputTokens),

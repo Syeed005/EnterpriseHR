@@ -7,5 +7,6 @@ namespace EnterpriseHR.Core.AI {
     public interface IAiUsageService {
         Task RecordAsync(AiUsageRecord record);
         Task<AiUsageSummary> GetSummaryAsync();
+        Task<AiUsageSummary> GetSummaryAsync(DateTime? fromUtc, DateTime? toUtc);
     }
 }

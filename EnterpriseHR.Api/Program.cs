@@ -161,6 +161,12 @@ public partial class Program {
             return Results.Ok(summary);
         });
 
+        app.MapGet("/usage/summary/range", async (DateTime? fromUtc, DateTime? toUtc, IAiUsageService usageService) =>
+        {
+            var summary = await usageService.GetSummaryAsync(fromUtc, toUtc);
+            return Results.Ok(summary);
+        });
+
         app.UseHttpsRedirection();
 
         app.UseAuthorization();
