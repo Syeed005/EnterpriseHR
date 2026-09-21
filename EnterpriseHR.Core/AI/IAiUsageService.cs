@@ -6,5 +6,6 @@ using System.Text;
 namespace EnterpriseHR.Core.AI {
     public interface IAiUsageService {
         Task RecordAsync(AiUsageRecord record);
+        Task<AiUsageSummary> GetSummaryAsync();
     }
 }

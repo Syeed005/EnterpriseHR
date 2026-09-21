@@ -155,6 +155,12 @@ public partial class Program {
             return Results.Ok(summary);
         });
 
+        app.MapGet("/usage/summary", async (IAiUsageService usageService) =>
+        {
+            var summary = await usageService.GetSummaryAsync();
+            return Results.Ok(summary);
+        });
+
         app.UseHttpsRedirection();
 
         app.UseAuthorization();
