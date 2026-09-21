@@ -80,6 +80,7 @@ public partial class Program {
             });
         builder.Services.AddSingleton<IAiCostCalculator, AiCostCalculator>();
         builder.Services.AddScoped<IAiUsageService, AiUsageService>();
+        builder.Services.AddScoped<IConversationService, ConversationService>();
 
         var app = builder.Build();
 
@@ -165,6 +166,43 @@ public partial class Program {
         {
             var summary = await usageService.GetSummaryAsync(fromUtc, toUtc);
             return Results.Ok(summary);
+        });
+
+        app.MapPost("/chat/sessions", async (IConversationService conversationService) =>
+        {
+            var session = await conversationService.CreateSessionAsync();
+
+            return Results.Ok(new {
+                sessionId = session.ChatSessionId,
+                createdAtUtc = session.CreatedAtUtc
+            });
+        });
+
+        app.MapPost("/chat/sessions/{sessionId:guid}/messages", async (Guid sessionId, string role, string content, IConversationService conversationService) =>
+        {
+            var message = await conversationService.AddMessageAsync(sessionId, role, content);
+
+            return Results.Ok(new {
+                messageId = message.ChatMessageId,
+                sessionId = message.ChatSessionId,
+                role = message.Role,
+                content = message.Content,
+                createdAtUtc = message.CreatedAtUtc
+            });
+        });
+
+        app.MapGet("/chat/sessions/{sessionId:guid}/messages", async (Guid sessionId, int? count, IConversationService conversationService) =>
+        {
+            var messages = await conversationService.GetRecentMessagesAsync(sessionId, count ?? 6);
+
+            return Results.Ok(messages.Select(message => new
+            {
+                messageId = message.ChatMessageId,
+                sessionId = message.ChatSessionId,
+                role = message.Role,
+                content = message.Content,
+                createdAtUtc = message.CreatedAtUtc
+            }));
         });
 
         app.UseHttpsRedirection();

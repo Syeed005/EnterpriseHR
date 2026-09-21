@@ -13,6 +13,9 @@ namespace EnterpriseHR.Infrastructure.Data {
         public DbSet<DocumentPage> DocumentPages => Set<DocumentPage>();
         public DbSet<DocumentChunk> DocumentChunks => Set<DocumentChunk>();
         public DbSet<AiUsageRecord> AiUsageRecords => Set<AiUsageRecord>();
+        public DbSet<ChatSession> ChatSessions => Set<ChatSession>();
+
+        public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {
             modelBuilder.Entity<Document>(entity =>
@@ -88,6 +91,28 @@ namespace EnterpriseHR.Infrastructure.Data {
 
                 entity.Property(x => x.TotalCostUsd)
                     .HasPrecision(18, 10);
+            });
+            
+            modelBuilder.Entity<ChatSession>(entity =>
+            {
+                entity.HasKey(x => x.ChatSessionId);
+            });
+
+            modelBuilder.Entity<ChatMessage>(entity =>
+            {
+                entity.HasKey(x => x.ChatMessageId);
+
+                entity.Property(x => x.Role)
+                    .HasMaxLength(50)
+                    .IsRequired();
+
+                entity.Property(x => x.Content)
+                    .IsRequired();
+
+                entity.HasOne(x => x.ChatSession)
+                    .WithMany(x => x.Messages)
+                    .HasForeignKey(x => x.ChatSessionId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }
