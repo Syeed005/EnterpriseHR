@@ -1,7 +1,9 @@
 ﻿using EnterpriseHR.Core.AI;
+using EnterpriseHR.Core.Entities;
 using EnterpriseHR.Core.Observability;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace EnterpriseHR.Infrastructure.AI {
@@ -10,12 +12,13 @@ namespace EnterpriseHR.Infrastructure.AI {
         private readonly IChatService _chatService;
         private readonly IContextExpansionService _contextExpansionService;
         private readonly IAiCostCalculator _costCalculator;
-
-        public RagService(IHybridSearchService searchService, IChatService chatService, IContextExpansionService contextExpansionService, IAiCostCalculator costCalculator) {
+        private readonly IAiUsageService _usageService;
+        public RagService(IHybridSearchService searchService, IChatService chatService, IContextExpansionService contextExpansionService, IAiCostCalculator costCalculator, IAiUsageService usageService) {
             _searchService = searchService;
             _chatService = chatService;
             _contextExpansionService = contextExpansionService;
             _costCalculator = costCalculator;
+            _usageService = usageService;
         }
 
         public async Task<RagAnswer> AskAsync(string question, int topK = 3) {
@@ -80,6 +83,20 @@ namespace EnterpriseHR.Infrastructure.AI {
                     IsExpandedContext = source.IsExpandedContext
                 })
             .ToList();
+
+            await _usageService.RecordAsync(new AiUsageRecord {
+                CreatedAtUtc = DateTime.UtcNow,
+                Provider = generation.Provider,
+                Model = generation.Model,
+                InputTokens = generation.InputTokens,
+                OutputTokens = generation.OutputTokens,
+                TotalTokens = generation.TotalTokens,
+                InputCostUsd = cost.InputCostUsd,
+                OutputCostUsd = cost.OutputCostUsd,
+                TotalCostUsd = cost.TotalCostUsd,
+                Operation = "rag.chat",
+                TraceId = Activity.Current?.TraceId.ToString()
+            });
 
             return new RagAnswer {
                 Answer = generation.Content,

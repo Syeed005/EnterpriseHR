@@ -79,6 +79,7 @@ public partial class Program {
                     .AddConsoleExporter();
             });
         builder.Services.AddSingleton<IAiCostCalculator, AiCostCalculator>();
+        builder.Services.AddScoped<IAiUsageService, AiUsageService>();
 
         var app = builder.Build();
 

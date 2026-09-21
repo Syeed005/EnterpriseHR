@@ -12,6 +12,7 @@ namespace EnterpriseHR.Infrastructure.Data {
         public DbSet<Document> Documents => Set<Document>();
         public DbSet<DocumentPage> DocumentPages => Set<DocumentPage>();
         public DbSet<DocumentChunk> DocumentChunks => Set<DocumentChunk>();
+        public DbSet<AiUsageRecord> AiUsageRecords => Set<AiUsageRecord>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {
             modelBuilder.Entity<Document>(entity =>
@@ -58,6 +59,35 @@ namespace EnterpriseHR.Infrastructure.Data {
                 entity.HasOne(x => x.DocumentPage)
                     .WithMany(x => x.Chunks)
                     .HasForeignKey(x => x.DocumentPageId);
+            });
+
+            modelBuilder.Entity<AiUsageRecord>(entity =>
+            {
+                entity.HasKey(x => x.AiUsageRecordId);
+
+                entity.Property(x => x.Provider)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                entity.Property(x => x.Model)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                entity.Property(x => x.Operation)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                entity.Property(x => x.TraceId)
+                    .HasMaxLength(100);
+
+                entity.Property(x => x.InputCostUsd)
+                    .HasPrecision(18, 10);
+
+                entity.Property(x => x.OutputCostUsd)
+                    .HasPrecision(18, 10);
+
+                entity.Property(x => x.TotalCostUsd)
+                    .HasPrecision(18, 10);
             });
         }
     }
