@@ -82,6 +82,17 @@ public partial class Program {
         builder.Services.AddScoped<IAiUsageService, AiUsageService>();
         builder.Services.AddScoped<IConversationService, ConversationService>();
 
+        builder.Services.AddSingleton<IQuestionContextualizer>(sp => {
+            var configuration = sp.GetRequiredService<IConfiguration>();
+            var apiKey = configuration["OpenAI:ApiKey"];
+
+            if (string.IsNullOrWhiteSpace(apiKey))
+                throw new InvalidOperationException("OpenAI API key is not configured.");
+
+            return new OpenAiQuestionContextualizer(apiKey);
+        });
+
+
         var app = builder.Build();
 
         // Configure the HTTP request pipeline.

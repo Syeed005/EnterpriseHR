@@ -15,14 +15,16 @@ namespace EnterpriseHR.Infrastructure.AI {
         private readonly IAiCostCalculator _costCalculator;
         private readonly IAiUsageService _usageService;
         private readonly IConversationService _conversationService;
+        private readonly IQuestionContextualizer _questionContextualizer;
 
-        public RagService(IHybridSearchService searchService, IChatService chatService, IContextExpansionService contextExpansionService, IAiCostCalculator costCalculator, IAiUsageService usageService, IConversationService conversationService) {
+        public RagService(IHybridSearchService searchService, IChatService chatService, IContextExpansionService contextExpansionService, IAiCostCalculator costCalculator, IAiUsageService usageService, IConversationService conversationService, IQuestionContextualizer questionContextualizer) {
             _searchService = searchService;
             _chatService = chatService;
             _contextExpansionService = contextExpansionService;
             _costCalculator = costCalculator;
             _usageService = usageService;
             _conversationService = conversationService;
+            _questionContextualizer = questionContextualizer;
         }
 
         public async Task<RagAnswer> AskAsync(Guid sessionId, string question, int topK = 3) {
@@ -30,7 +32,15 @@ namespace EnterpriseHR.Infrastructure.AI {
             activity?.SetTag("rag.top_k", topK);
 
             // Validate session + store question
+            var history = await _conversationService.GetRecentMessagesAsync(sessionId, 6);
             await _conversationService.AddMessageAsync(sessionId, "user", question);
+
+
+            string retrievalQuery;
+            using (var contextualizeActivity = EnterpriseHrTelemetry.ActivitySource.StartActivity("conversation.contextualize")) {
+                contextualizeActivity?.SetTag("conversation.history_count", history.Count);
+                retrievalQuery = await _questionContextualizer.ContextualizeAsync(question, history);
+            }
 
             // RAG pipeline
             //Hybrid retrieval
@@ -38,7 +48,7 @@ namespace EnterpriseHR.Infrastructure.AI {
             using (var searchActivity = EnterpriseHrTelemetry.ActivitySource.StartActivity("retrieval.hybrid")) {
                 searchActivity?.SetTag("retrieval.top_k", topK);
 
-                searchResults = await _searchService.SearchAsync(question, topK);
+                searchResults = await _searchService.SearchAsync(retrievalQuery, topK);
 
                 searchActivity?.SetTag("retrieval.result_count", searchResults.Count);
             }
@@ -54,7 +64,7 @@ namespace EnterpriseHR.Infrastructure.AI {
             }
 
             //BuildPrompt
-            var prompt = BuildPrompt(question, sources);
+            var prompt = BuildPrompt(question, history, sources);
             AiCostResult cost;
 
             //LLM
@@ -118,8 +128,10 @@ namespace EnterpriseHR.Infrastructure.AI {
             };
         }
 
-        private static string BuildPrompt(string question, IReadOnlyList<RetrievalResult> sources) {
+        private static string BuildPrompt(string question, IReadOnlyList<ChatMessage> history, IReadOnlyList<RetrievalResult> sources) {
             var context = new StringBuilder();
+
+            var historyText = history.Count == 0 ? "No previous conversation." : string.Join("\n", history.Select(x => $"{x.Role}: {x.Content}"));
 
             for (var i = 0; i < sources.Count; i++) {
                 var source = sources[i];
@@ -135,25 +147,32 @@ namespace EnterpriseHR.Infrastructure.AI {
             }
 
             return $"""
-                   You are an internal HR assistant.
-                   
-                   Answer the employee's question using only the supplied HR document context.
-                   
-                   Rules:
-                   - Do not use outside knowledge.
-                   - Do not invent policy details.
-                   - If the supplied context does not contain enough information, say that the available HR documents do not provide enough information.
-                   - Be concise and clear.
-                   - Cite the relevant source numbers in the answer using [Source 1], [Source 2], etc.
-                   
-                   Employee question:
-                   {question}
-                   
-                   HR document context:
-                   {context}
-                   
-                   Answer:
-                   """;
+                You are an internal HR assistant.
+
+                Answer the employee's current question using only the supplied authoritative HR document context for factual HR information.
+
+                Rules:
+                - Use the conversation history to understand the employee's current question and maintain conversational continuity.
+                - Previous assistant messages are not authoritative HR evidence.
+                - Do not repeat information from previous assistant messages as fact unless it is supported by the supplied HR document context.
+                - If conversation history conflicts with the supplied HR document context, follow the HR document context.
+                - Do not use outside knowledge.
+                - Do not invent policy details.
+                - If the supplied context does not contain enough information, say that the available HR documents do not provide enough information.
+                - Be concise and clear.
+                - Cite the relevant source numbers in the answer using [Source 1], [Source 2], etc.
+
+                Conversation history:
+                {historyText}
+
+                Current employee question:
+                {question}
+
+                Authoritative HR document context:
+                {context}
+
+                Answer:
+                """;
         }
     }
 }
