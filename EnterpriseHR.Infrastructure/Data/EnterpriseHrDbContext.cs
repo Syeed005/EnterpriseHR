@@ -16,6 +16,7 @@ namespace EnterpriseHR.Infrastructure.Data {
         public DbSet<ChatSession> ChatSessions => Set<ChatSession>();
 
         public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+        public DbSet<ApplicationUser> ApplicationUsers => Set<ApplicationUser>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {
             modelBuilder.Entity<Document>(entity =>
@@ -96,6 +97,10 @@ namespace EnterpriseHR.Infrastructure.Data {
             modelBuilder.Entity<ChatSession>(entity =>
             {
                 entity.HasKey(x => x.ChatSessionId);
+                entity.HasOne(x => x.ApplicationUser)
+                      .WithMany(x => x.ChatSessions)
+                      .HasForeignKey(x => x.ApplicationUserId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<ChatMessage>(entity =>
@@ -113,6 +118,30 @@ namespace EnterpriseHR.Infrastructure.Data {
                     .WithMany(x => x.Messages)
                     .HasForeignKey(x => x.ChatSessionId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<ApplicationUser>(entity =>
+            {
+                entity.HasKey(x => x.ApplicationUserId);
+
+                entity.Property(x => x.ExternalUserId)
+                    .HasMaxLength(200)
+                    .IsRequired();
+
+                entity.Property(x => x.Email)
+                    .HasMaxLength(320)
+                    .IsRequired();
+
+                entity.Property(x => x.DisplayName)
+                    .HasMaxLength(200)
+                    .IsRequired();
+
+                entity.Property(x => x.Role)
+                    .HasMaxLength(50)
+                    .IsRequired();
+
+                entity.HasIndex(x => x.ExternalUserId)
+                    .IsUnique();
             });
         }
     }

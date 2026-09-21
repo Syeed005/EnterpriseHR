@@ -1,9 +1,11 @@
+using EnterpriseHR.Api.Security;
 using EnterpriseHR.Core.AI;
 using EnterpriseHR.Core.Documents;
 using EnterpriseHR.Core.Evaluation.Conversation;
 using EnterpriseHR.Core.Evaluation.Rag;
 using EnterpriseHR.Core.Evaluation.Retrieval;
 using EnterpriseHR.Core.Observability;
+using EnterpriseHR.Core.Security;
 using EnterpriseHR.Core.Services;
 using EnterpriseHR.Infrastructure.AI;
 using EnterpriseHR.Infrastructure.Data;
@@ -12,6 +14,7 @@ using EnterpriseHR.Infrastructure.Evaluation.Conversation;
 using EnterpriseHR.Infrastructure.Evaluation.Rag;
 using EnterpriseHR.Infrastructure.Evaluation.Retrieval;
 using EnterpriseHR.Infrastructure.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -95,6 +98,18 @@ public partial class Program {
         });
 
         builder.Services.AddScoped<IConversationEvaluationService, ConversationEvaluationService>();
+
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+        builder.Services.AddScoped<IApplicationUserService, ApplicationUserService>();
+
+        builder.Services
+            .AddAuthentication(DevelopmentAuthHandler.SchemeName)
+            .AddScheme<AuthenticationSchemeOptions, DevelopmentAuthHandler>(
+        DevelopmentAuthHandler.SchemeName,
+        options => { });
+
+        builder.Services.AddAuthorization();
 
         var app = builder.Build();
 
@@ -224,10 +239,22 @@ public partial class Program {
             }));
         });
 
-        
+        app.MapGet("/auth/me", async (ICurrentUserService currentUserService, IApplicationUserService applicationUserService) =>
+        {
+            var user = await applicationUserService.GetOrCreateCurrentUserAsync();
+
+            return Results.Ok(new {
+                currentUserService.IsAuthenticated,
+                currentUserService.ExternalUserId,
+                currentUserService.Email,
+                currentUserService.DisplayName,
+                user.ApplicationUserId,
+                user.Role
+            });
+        }).RequireAuthorization();
 
         app.UseHttpsRedirection();
-
+        app.UseAuthentication();
         app.UseAuthorization();
 
         app.MapControllers();
