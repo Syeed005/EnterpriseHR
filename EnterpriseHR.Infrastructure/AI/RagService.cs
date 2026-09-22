@@ -2,6 +2,7 @@
 using EnterpriseHR.Core.Entities;
 using EnterpriseHR.Core.Observability;
 using EnterpriseHR.Core.Services;
+using EnterpriseHR.Core.Tools;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -16,8 +17,9 @@ namespace EnterpriseHR.Infrastructure.AI {
         private readonly IAiUsageService _usageService;
         private readonly IConversationService _conversationService;
         private readonly IQuestionContextualizer _questionContextualizer;
+        private readonly IEmployeeProfileTool _employeeProfileTool;
 
-        public RagService(IHybridSearchService searchService, IChatService chatService, IContextExpansionService contextExpansionService, IAiCostCalculator costCalculator, IAiUsageService usageService, IConversationService conversationService, IQuestionContextualizer questionContextualizer) {
+        public RagService(IHybridSearchService searchService, IChatService chatService, IContextExpansionService contextExpansionService, IAiCostCalculator costCalculator, IAiUsageService usageService, IConversationService conversationService, IQuestionContextualizer questionContextualizer, IEmployeeProfileTool employeeProfileTool) {
             _searchService = searchService;
             _chatService = chatService;
             _contextExpansionService = contextExpansionService;
@@ -25,6 +27,7 @@ namespace EnterpriseHR.Infrastructure.AI {
             _usageService = usageService;
             _conversationService = conversationService;
             _questionContextualizer = questionContextualizer;
+            _employeeProfileTool = employeeProfileTool;
         }
 
         public async Task<RagAnswer> AskAsync(Guid sessionId, string question, int topK = 3) {
@@ -41,6 +44,8 @@ namespace EnterpriseHR.Infrastructure.AI {
                 contextualizeActivity?.SetTag("conversation.history_count", history.Count);
                 retrievalQuery = await _questionContextualizer.ContextualizeAsync(question, history);
             }
+
+            var employeeProfile = await _employeeProfileTool.GetMyEmployeeProfileAsync();
 
             // RAG pipeline
             //Hybrid retrieval
@@ -64,7 +69,7 @@ namespace EnterpriseHR.Infrastructure.AI {
             }
 
             //BuildPrompt
-            var prompt = BuildPrompt(question, history, sources);
+            var prompt = BuildPrompt(question, history, sources, employeeProfile);
             AiCostResult cost;
 
             //LLM
@@ -129,10 +134,19 @@ namespace EnterpriseHR.Infrastructure.AI {
             };
         }
 
-        private static string BuildPrompt(string question, IReadOnlyList<ChatMessage> history, IReadOnlyList<RetrievalResult> sources) {
+        private static string BuildPrompt(string question, IReadOnlyList<ChatMessage> history, IReadOnlyList<RetrievalResult> sources, EmployeeProfileToolResult? employeeProfile) {
             var context = new StringBuilder();
 
             var historyText = history.Count == 0 ? "No previous conversation." : string.Join("\n", history.Select(x => $"{x.Role}: {x.Content}"));
+
+            var employeeContext = employeeProfile is null ? "No employee profile is available for the authenticated user." : $"""
+                Employee Number: {employeeProfile.EmployeeNumber}
+                Department: {employeeProfile.Department}
+                Office Schedule: {employeeProfile.OfficeSchedule}
+                Location: {employeeProfile.Location}
+                Employment Status: {employeeProfile.EmploymentStatus}
+                """;
+
 
             for (var i = 0; i < sources.Count; i++) {
                 var source = sources[i];
@@ -150,26 +164,34 @@ namespace EnterpriseHR.Infrastructure.AI {
             return $"""
                 You are an internal HR assistant.
 
-                Answer the employee's current question using only the supplied authoritative HR document context for factual HR information.
+                Answer the employee's current question using the supplied authenticated employee data and authoritative HR document context.
 
                 Rules:
+                - AUTHENTICATED EMPLOYEE DATA contains trusted structured information about the current authenticated employee.
+                - Use AUTHENTICATED EMPLOYEE DATA only for facts about the current employee.
+                - Use AUTHORITATIVE HR DOCUMENT CONTEXT for HR policies, rules, schedules, eligibility, and procedures.
+                - When answering a personalized policy question, combine the authenticated employee data with the applicable HR policy information.
                 - Use the conversation history to understand the employee's current question and maintain conversational continuity.
                 - Previous assistant messages are not authoritative HR evidence.
-                - Do not repeat information from previous assistant messages as fact unless it is supported by the supplied HR document context.
-                - If conversation history conflicts with the supplied HR document context, follow the HR document context.
+                - Do not repeat information from previous assistant messages as fact unless supported by the authenticated employee data or supplied HR     document    context.
+                - If conversation history conflicts with the supplied authoritative information, follow the supplied authoritative information.
                 - Do not use outside knowledge.
-                - Do not invent policy details.
-                - If the supplied context does not contain enough information, say that the available HR documents do not provide enough information.
+                - Do not invent employee information or policy details.
+                - If the supplied information is insufficient, say that the available employee data and HR documents do not provide enough information.
+                - Cite HR policy claims using [Source 1], [Source 2], etc.
+                - Do not create document citations for authenticated employee data.
                 - Be concise and clear.
-                - Cite the relevant source numbers in the answer using [Source 1], [Source 2], etc.
 
                 Conversation history:
                 {historyText}
 
+                AUTHENTICATED EMPLOYEE DATA:
+                {employeeContext}
+
                 Current employee question:
                 {question}
 
-                Authoritative HR document context:
+                AUTHORITATIVE HR DOCUMENT CONTEXT:
                 {context}
 
                 Answer:

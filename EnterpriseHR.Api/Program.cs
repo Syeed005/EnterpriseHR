@@ -8,6 +8,7 @@ using EnterpriseHR.Core.Feedback;
 using EnterpriseHR.Core.Observability;
 using EnterpriseHR.Core.Security;
 using EnterpriseHR.Core.Services;
+using EnterpriseHR.Core.Tools;
 using EnterpriseHR.Infrastructure.AI;
 using EnterpriseHR.Infrastructure.Data;
 using EnterpriseHR.Infrastructure.Documents;
@@ -16,6 +17,7 @@ using EnterpriseHR.Infrastructure.Evaluation.Rag;
 using EnterpriseHR.Infrastructure.Evaluation.Retrieval;
 using EnterpriseHR.Infrastructure.Security;
 using EnterpriseHR.Infrastructure.Services;
+using EnterpriseHR.Infrastructure.Tools;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -146,6 +148,9 @@ public partial class Program {
         builder.Services.AddScoped<IAuditService, AuditService>();
 
         builder.Services.AddScoped<IEmployeeProfileService, EmployeeProfileService>();
+        builder.Services.AddScoped<IEmployeeProfileTool, EmployeeProfileTool>();
+
+        builder.Services.AddScoped<IToolCallingService>(sp => new OpenAiToolCallingService(builder.Configuration["OpenAI:ApiKey"]!, sp.GetRequiredService<IEmployeeProfileTool>()));
 
         var app = builder.Build();
 
@@ -327,6 +332,9 @@ public partial class Program {
                 profile.EmploymentStatus
             });
         }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
+
+        app.MapPost("/tools/ask", async (string question, IToolCallingService toolCallingService) => 
+            Results.Ok(await toolCallingService.AskAsync(question))).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
 
         app.UseHttpsRedirection();
         app.UseAuthentication();
