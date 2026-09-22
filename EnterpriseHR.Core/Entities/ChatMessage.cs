@@ -15,5 +15,6 @@ namespace EnterpriseHR.Core.Entities {
         public DateTime CreatedAtUtc { get; set; }
 
         public ChatSession ChatSession { get; set; } = null!;
+        public ICollection<AnswerFeedback> Feedback { get; set; } = new List<AnswerFeedback>();
     }
 }

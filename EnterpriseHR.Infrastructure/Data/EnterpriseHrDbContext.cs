@@ -17,6 +17,7 @@ namespace EnterpriseHR.Infrastructure.Data {
 
         public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
         public DbSet<ApplicationUser> ApplicationUsers => Set<ApplicationUser>();
+        public DbSet<AnswerFeedback> AnswerFeedback { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {
             modelBuilder.Entity<Document>(entity =>
@@ -142,6 +143,27 @@ namespace EnterpriseHR.Infrastructure.Data {
                     .IsRequired();
 
                 entity.HasIndex(x => x.ExternalUserId)
+                    .IsUnique();
+            });
+
+            modelBuilder.Entity<AnswerFeedback>(entity =>
+            {
+                entity.HasKey(x => x.AnswerFeedbackId);
+
+                entity.Property(x => x.Comment)
+                    .HasMaxLength(1000);
+
+                entity.HasOne(x => x.ChatMessage)
+                    .WithMany(x => x.Feedback)
+                    .HasForeignKey(x => x.ChatMessageId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(x => x.ApplicationUser)
+                    .WithMany(x => x.Feedback)
+                    .HasForeignKey(x => x.ApplicationUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(x => new { x.ChatMessageId, x.ApplicationUserId })
                     .IsUnique();
             });
         }

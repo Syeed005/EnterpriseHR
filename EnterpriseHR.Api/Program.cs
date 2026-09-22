@@ -4,6 +4,7 @@ using EnterpriseHR.Core.Documents;
 using EnterpriseHR.Core.Evaluation.Conversation;
 using EnterpriseHR.Core.Evaluation.Rag;
 using EnterpriseHR.Core.Evaluation.Retrieval;
+using EnterpriseHR.Core.Feedback;
 using EnterpriseHR.Core.Observability;
 using EnterpriseHR.Core.Security;
 using EnterpriseHR.Core.Services;
@@ -140,6 +141,8 @@ public partial class Program {
 
         builder.Services.AddScoped<IAuthorizationHandler, ApplicationRoleAuthorizationHandler>();
         builder.Services.AddScoped<IDocumentAccessService, DocumentAccessService>();
+
+        builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 
         var app = builder.Build();
 
@@ -292,6 +295,19 @@ public partial class Program {
         {
             return Results.Ok(new { message = "HR authorization passed." });
         }).RequireAuthorization(AuthorizationPolicies.HRAccess);
+
+        app.MapPost("/feedback", async (SubmitFeedbackRequest request, IFeedbackService feedbackService) =>
+        {
+            var feedback = await feedbackService.SubmitAsync(request);
+
+            return Results.Ok(new {
+                feedback.AnswerFeedbackId,
+                feedback.ChatMessageId,
+                feedback.IsHelpful,
+                feedback.Comment,
+                feedback.CreatedAtUtc
+            });
+        }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
 
         app.UseHttpsRedirection();
         app.UseAuthentication();

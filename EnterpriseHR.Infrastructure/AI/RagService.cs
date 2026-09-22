@@ -106,7 +106,7 @@ namespace EnterpriseHR.Infrastructure.AI {
             }).ToList();
 
             var answer = generation.Content;
-            await _conversationService.AddMessageAsync(sessionId, "assistant", answer);
+            var assistantMessage = await _conversationService.AddMessageAsync(sessionId, "assistant", answer);
 
             await _usageService.RecordAsync(new AiUsageRecord {
                 CreatedAtUtc = DateTime.UtcNow,
@@ -124,6 +124,7 @@ namespace EnterpriseHR.Infrastructure.AI {
 
             return new RagAnswer {
                 Answer = answer,
+                AssistantMessageId = assistantMessage.ChatMessageId,
                 Citations = citations
             };
         }
