@@ -19,6 +19,7 @@ namespace EnterpriseHR.Infrastructure.Data {
         public DbSet<ApplicationUser> ApplicationUsers => Set<ApplicationUser>();
         public DbSet<AnswerFeedback> AnswerFeedback { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
+        public DbSet<EmployeeProfile> EmployeeProfiles { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {
             modelBuilder.Entity<Document>(entity =>
@@ -194,6 +195,42 @@ namespace EnterpriseHR.Infrastructure.Data {
 
                 entity.HasIndex(x => x.CreatedAtUtc);
                 entity.HasIndex(x => new { x.ResourceType, x.ResourceId });
+            });
+
+            modelBuilder.Entity<EmployeeProfile>(entity =>
+            {
+                entity.HasKey(x => x.EmployeeProfileId);
+
+                entity.Property(x => x.EmployeeNumber)
+                    .HasMaxLength(50)
+                    .IsRequired();
+
+                entity.Property(x => x.Department)
+                    .HasMaxLength(150)
+                    .IsRequired();
+
+                entity.Property(x => x.OfficeSchedule)
+                    .HasMaxLength(50)
+                    .IsRequired();
+
+                entity.Property(x => x.Location)
+                    .HasMaxLength(150)
+                    .IsRequired();
+
+                entity.Property(x => x.EmploymentStatus)
+                    .HasMaxLength(50)
+                    .IsRequired();
+
+                entity.HasIndex(x => x.EmployeeNumber)
+                    .IsUnique();
+
+                entity.HasIndex(x => x.ApplicationUserId)
+                    .IsUnique();
+
+                entity.HasOne(x => x.ApplicationUser)
+                    .WithOne()
+                    .HasForeignKey<EmployeeProfile>(x => x.ApplicationUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

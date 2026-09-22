@@ -145,6 +145,8 @@ public partial class Program {
         builder.Services.AddScoped<IFeedbackService, FeedbackService>();
         builder.Services.AddScoped<IAuditService, AuditService>();
 
+        builder.Services.AddScoped<IEmployeeProfileService, EmployeeProfileService>();
+
         var app = builder.Build();
 
         // Configure the HTTP request pipeline.
@@ -307,6 +309,22 @@ public partial class Program {
                 feedback.IsHelpful,
                 feedback.Comment,
                 feedback.CreatedAtUtc
+            });
+        }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
+
+        app.MapGet("/employees/me/profile", async (IEmployeeProfileService employeeProfileService) =>
+        {
+            var profile = await employeeProfileService.GetMyProfileAsync();
+
+            if (profile is null)
+                return Results.NotFound();
+
+            return Results.Ok(new {
+                profile.EmployeeNumber,
+                profile.Department,
+                profile.OfficeSchedule,
+                profile.Location,
+                profile.EmploymentStatus
             });
         }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
 
