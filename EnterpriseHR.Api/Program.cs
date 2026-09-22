@@ -13,6 +13,7 @@ using EnterpriseHR.Infrastructure.Documents;
 using EnterpriseHR.Infrastructure.Evaluation.Conversation;
 using EnterpriseHR.Infrastructure.Evaluation.Rag;
 using EnterpriseHR.Infrastructure.Evaluation.Retrieval;
+using EnterpriseHR.Infrastructure.Security;
 using EnterpriseHR.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -138,6 +139,7 @@ public partial class Program {
         });
 
         builder.Services.AddScoped<IAuthorizationHandler, ApplicationRoleAuthorizationHandler>();
+        builder.Services.AddScoped<IDocumentAccessService, DocumentAccessService>();
 
         var app = builder.Build();
 
@@ -171,6 +173,11 @@ public partial class Program {
             });
         }).RequireAuthorization(AuthorizationPolicies.HRAccess);
 
+        app.MapPost("/documents/{documentId:int}/activate", async (int documentId, IDocumentLifecycleService lifecycleService) => {
+            await lifecycleService.ActivateAsync(documentId);
+            return Results.Ok();
+        }).RequireAuthorization(AuthorizationPolicies.HRAccess);
+
         app.MapGet("/search/semantic", async (string query, int? topK, ISemanticSearchService searchService) =>
         {
             var results = await searchService.SearchAsync(query, topK ?? 3);
@@ -178,11 +185,7 @@ public partial class Program {
             return Results.Ok(results);
         });
 
-        app.MapPost("/chat/ask", async (RagQuestionRequest request, IRagService ragService) =>
-        {
-            var result = await ragService.AskAsync(request.SessionId, request.Question, request.TopK);
-            return Results.Ok(result);
-        }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess); 
+        
 
         app.MapGet("/search/fulltext", async (string query, int? topK, IFullTextSearchService searchService) =>
         {
@@ -196,10 +199,7 @@ public partial class Program {
             return Results.Ok(results);
         });
 
-        app.MapPost("/documents/{documentId:int}/activate", async (int documentId, IDocumentLifecycleService lifecycleService) => {
-            await lifecycleService.ActivateAsync(documentId);
-            return Results.Ok();
-        }).RequireAuthorization(AuthorizationPolicies.HRAccess);
+        
 
         app.MapPost("/evaluation/retrieval", async (int? topK, IRetrievalEvaluationService evaluationService) =>
         {
@@ -240,6 +240,11 @@ public partial class Program {
             });
         }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
 
+        app.MapPost("/chat/ask", async (RagQuestionRequest request, IRagService ragService) => {
+            var result = await ragService.AskAsync(request.SessionId, request.Question, request.TopK);
+            return Results.Ok(result);
+        }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
+
         app.MapPost("/chat/sessions/{sessionId:guid}/messages", async (Guid sessionId, string role, string content, IConversationService conversationService) =>
         {
             var message = await conversationService.AddMessageAsync(sessionId, role, content);
@@ -266,6 +271,8 @@ public partial class Program {
                 createdAtUtc = message.CreatedAtUtc
             }));
         }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
+
+        
 
         app.MapGet("/auth/me", async (ICurrentUserService currentUserService, IApplicationUserService applicationUserService) =>
         {

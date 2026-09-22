@@ -1,5 +1,6 @@
 ﻿using EnterpriseHR.Core.AI;
 using EnterpriseHR.Core.Observability;
+using EnterpriseHR.Core.Security;
 using EnterpriseHR.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -11,18 +12,20 @@ namespace EnterpriseHR.Infrastructure.AI {
     public class SemanticSearchService : ISemanticSearchService {
         private readonly EnterpriseHrDbContext _dbContext;
         private readonly IEmbeddingService _embeddingService;
+        private readonly IDocumentAccessService _documentAccessService;
 
-        public SemanticSearchService(EnterpriseHrDbContext dbContext, IEmbeddingService embeddingService) {
+        public SemanticSearchService(EnterpriseHrDbContext dbContext, IEmbeddingService embeddingService, IDocumentAccessService documentAccessService) {
             _dbContext = dbContext;
             _embeddingService = embeddingService;
+            _documentAccessService = documentAccessService;
         }
 
         public async Task<IReadOnlyList<SemanticSearchResult>> SearchAsync(string query, int topK = 3) {
-            float[] queryEmbedding;
+            var allowedAccessLevels = await _documentAccessService.GetAllowedAccessLevelsAsync();
 
+            float[] queryEmbedding;
             using (var activity = EnterpriseHrTelemetry.ActivitySource.StartActivity("embedding.generate")) {
                 queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query);
-
                 activity?.SetTag("embedding.dimension", queryEmbedding.Length);
             }
 
@@ -33,7 +36,8 @@ namespace EnterpriseHR.Infrastructure.AI {
                 .Where(x =>
                     x.EmbeddingJson != null &&
                     x.EmbeddingJson != "" &&
-                    x.DocumentPage.Document.Status == "Active")
+                    x.DocumentPage.Document.Status == "Active" &&
+                        allowedAccessLevels.Contains(x.DocumentPage.Document.AccessLevel))
                 .Select(x => new {
                     x.DocumentChunkId,
                     x.ChunkIndex,

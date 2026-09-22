@@ -1,4 +1,5 @@
 ﻿using EnterpriseHR.Core.AI;
+using EnterpriseHR.Core.Security;
 using EnterpriseHR.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -8,14 +9,16 @@ using System.Text;
 namespace EnterpriseHR.Infrastructure.AI {
     public class ContextExpansionService : IContextExpansionService {
         private readonly EnterpriseHrDbContext _dbContext;
+        private readonly IDocumentAccessService _documentAccessService;
 
-        public ContextExpansionService(EnterpriseHrDbContext dbContext) {
+        public ContextExpansionService(EnterpriseHrDbContext dbContext, IDocumentAccessService documentAccessService) {
             _dbContext = dbContext;
+            _documentAccessService = documentAccessService;
         }
 
         public async Task<IReadOnlyList<RetrievalResult>> ExpandAsync(IReadOnlyList<RetrievalResult> results) {
             var expanded = new Dictionary<int, RetrievalResult>();
-
+            var allowedAccessLevels = await _documentAccessService.GetAllowedAccessLevelsAsync();
             foreach (var result in results) {
                 expanded[result.DocumentChunkId] = result;
 
@@ -27,7 +30,9 @@ namespace EnterpriseHR.Infrastructure.AI {
                     .Where(c =>
                         c.DocumentPage.DocumentId == result.DocumentId &&
                         c.DocumentPage.PageNumber == result.PageNumber &&
-                        c.SectionTitle == result.SectionTitle)
+                        c.SectionTitle == result.SectionTitle &&
+                        c.DocumentPage.Document.Status == "Active" &&
+                        allowedAccessLevels.Contains(c.DocumentPage.Document.AccessLevel))
                     .OrderBy(c => c.ChunkIndex)
                     .Select(c => new RetrievalResult {
                         DocumentChunkId = c.DocumentChunkId,

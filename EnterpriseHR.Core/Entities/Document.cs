@@ -1,4 +1,5 @@
-﻿using System;
+﻿using EnterpriseHR.Core.Security;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -18,6 +19,7 @@ namespace EnterpriseHR.Core.Entities {
         public string? Status { get; set; }
         public DateTime CreatedAt { get; set; }
         public string? PolicyKey { get; set; }
+        public string AccessLevel { get; set; } = DocumentAccessLevels.Employee;
         public ICollection<DocumentPage> Pages { get; set; } = new List<DocumentPage>();
     }
 }

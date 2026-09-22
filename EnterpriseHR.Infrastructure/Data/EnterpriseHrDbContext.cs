@@ -35,6 +35,7 @@ namespace EnterpriseHR.Infrastructure.Data {
                 entity.Property(x => x.Audience).HasMaxLength(200);
                 entity.Property(x => x.Status).HasMaxLength(50);
                 entity.Property(x => x.PolicyKey).HasMaxLength(150);
+                entity.Property(x => x.AccessLevel).HasMaxLength(50).IsRequired();
             });
 
             modelBuilder.Entity<DocumentPage>(entity =>
