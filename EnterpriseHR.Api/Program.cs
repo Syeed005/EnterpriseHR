@@ -256,11 +256,11 @@ public partial class Program {
             });
         }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
 
-        app.MapPost("/chat/ask", async (RagQuestionRequest request, IRagService ragService) => {
-            var result = await ragService.AskAsync(request.SessionId, request.Question, request.TopK);
+        app.MapPost("/chat/ask", async (Guid sessionId, string question, IHrAssistantService hrAssistantService) => {
+            var result = await hrAssistantService.AskAsync(sessionId, question);
             return Results.Ok(result);
         }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
-
+        
         app.MapPost("/chat/sessions/{sessionId:guid}/messages", async (Guid sessionId, string role, string content, IConversationService conversationService) =>
         {
             var message = await conversationService.AddMessageAsync(sessionId, role, content);
@@ -338,10 +338,10 @@ public partial class Program {
             });
         }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
 
-        app.MapPost("/tools/ask", async (string question, IToolCallingService toolCallingService) => 
-            Results.Ok(await toolCallingService.AskAsync(question))).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
+        //app.MapPost("/tools/ask", async (string question, IToolCallingService toolCallingService) => 
+        //    Results.Ok(await toolCallingService.AskAsync(question))).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
 
-        app.MapPost("/agent/ask", async (Guid sessionId, string question, IHrAssistantService hrAssistantService) => Results.Ok(await hrAssistantService.AskAsync(sessionId, question))).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
+        //app.MapPost("/agent/ask", async (Guid sessionId, string question, IHrAssistantService hrAssistantService) => Results.Ok(await hrAssistantService.AskAsync(sessionId, question))).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
 
         app.UseHttpsRedirection();
         app.UseAuthentication();

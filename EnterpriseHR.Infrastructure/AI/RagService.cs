@@ -17,9 +17,8 @@ namespace EnterpriseHR.Infrastructure.AI {
         private readonly IAiUsageService _usageService;
         private readonly IConversationService _conversationService;
         private readonly IQuestionContextualizer _questionContextualizer;
-        private readonly IEmployeeProfileTool _employeeProfileTool;
 
-        public RagService(IHybridSearchService searchService, IChatService chatService, IContextExpansionService contextExpansionService, IAiCostCalculator costCalculator, IAiUsageService usageService, IConversationService conversationService, IQuestionContextualizer questionContextualizer, IEmployeeProfileTool employeeProfileTool) {
+        public RagService(IHybridSearchService searchService, IChatService chatService, IContextExpansionService contextExpansionService, IAiCostCalculator costCalculator, IAiUsageService usageService, IConversationService conversationService, IQuestionContextualizer questionContextualizer) {
             _searchService = searchService;
             _chatService = chatService;
             _contextExpansionService = contextExpansionService;
@@ -27,7 +26,6 @@ namespace EnterpriseHR.Infrastructure.AI {
             _usageService = usageService;
             _conversationService = conversationService;
             _questionContextualizer = questionContextualizer;
-            _employeeProfileTool = employeeProfileTool;
         }
 
         public async Task<RagAnswer> AskAsync(Guid sessionId, string question, int topK = 3) {
@@ -45,7 +43,7 @@ namespace EnterpriseHR.Infrastructure.AI {
                 retrievalQuery = await _questionContextualizer.ContextualizeAsync(question, history);
             }
 
-            var employeeProfile = await _employeeProfileTool.GetMyEmployeeProfileAsync();
+            //var employeeProfile = await _employeeProfileTool.GetMyEmployeeProfileAsync();
 
             // RAG pipeline
             //Hybrid retrieval
@@ -69,7 +67,7 @@ namespace EnterpriseHR.Infrastructure.AI {
             }
 
             //BuildPrompt
-            var prompt = BuildPrompt(question, history, sources, employeeProfile);
+            var prompt = BuildPrompt(question, history, sources);
             AiCostResult cost;
 
             //LLM
@@ -134,19 +132,10 @@ namespace EnterpriseHR.Infrastructure.AI {
             };
         }
 
-        private static string BuildPrompt(string question, IReadOnlyList<ChatMessage> history, IReadOnlyList<RetrievalResult> sources, EmployeeProfileToolResult? employeeProfile) {
+        private static string BuildPrompt(string question, IReadOnlyList<ChatMessage> history, IReadOnlyList<RetrievalResult> sources) {
             var context = new StringBuilder();
 
             var historyText = history.Count == 0 ? "No previous conversation." : string.Join("\n", history.Select(x => $"{x.Role}: {x.Content}"));
-
-            var employeeContext = employeeProfile is null ? "No employee profile is available for the authenticated user." : $"""
-                Employee Number: {employeeProfile.EmployeeNumber}
-                Department: {employeeProfile.Department}
-                Office Schedule: {employeeProfile.OfficeSchedule}
-                Location: {employeeProfile.Location}
-                Employment Status: {employeeProfile.EmploymentStatus}
-                """;
-
 
             for (var i = 0; i < sources.Count; i++) {
                 var source = sources[i];
@@ -184,9 +173,6 @@ namespace EnterpriseHR.Infrastructure.AI {
 
                 Conversation history:
                 {historyText}
-
-                AUTHENTICATED EMPLOYEE DATA:
-                {employeeContext}
 
                 Current employee question:
                 {question}
