@@ -18,6 +18,7 @@ namespace EnterpriseHR.Infrastructure.Data {
         public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
         public DbSet<ApplicationUser> ApplicationUsers => Set<ApplicationUser>();
         public DbSet<AnswerFeedback> AnswerFeedback { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {
             modelBuilder.Entity<Document>(entity =>
@@ -165,6 +166,34 @@ namespace EnterpriseHR.Infrastructure.Data {
 
                 entity.HasIndex(x => new { x.ChatMessageId, x.ApplicationUserId })
                     .IsUnique();
+            });
+
+            modelBuilder.Entity<AuditLog>(entity =>
+            {
+                entity.HasKey(x => x.AuditLogId);
+
+                entity.Property(x => x.Action)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                entity.Property(x => x.ResourceType)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                entity.Property(x => x.ResourceId)
+                    .HasMaxLength(200)
+                    .IsRequired();
+
+                entity.Property(x => x.Details)
+                    .HasMaxLength(2000);
+
+                entity.HasOne(x => x.ApplicationUser)
+                    .WithMany()
+                    .HasForeignKey(x => x.ApplicationUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(x => x.CreatedAtUtc);
+                entity.HasIndex(x => new { x.ResourceType, x.ResourceId });
             });
         }
     }

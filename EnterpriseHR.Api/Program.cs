@@ -143,6 +143,7 @@ public partial class Program {
         builder.Services.AddScoped<IDocumentAccessService, DocumentAccessService>();
 
         builder.Services.AddScoped<IFeedbackService, FeedbackService>();
+        builder.Services.AddScoped<IAuditService, AuditService>();
 
         var app = builder.Build();
 

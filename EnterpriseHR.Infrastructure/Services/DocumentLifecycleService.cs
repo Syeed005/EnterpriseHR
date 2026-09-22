@@ -1,4 +1,5 @@
-﻿using EnterpriseHR.Core.Services;
+﻿using EnterpriseHR.Core.Audit;
+using EnterpriseHR.Core.Services;
 using EnterpriseHR.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -8,9 +9,11 @@ using System.Text;
 namespace EnterpriseHR.Infrastructure.Services {
     public class DocumentLifecycleService : IDocumentLifecycleService {
         private readonly EnterpriseHrDbContext _dbContext;
+        private readonly IAuditService _auditService;
 
-        public DocumentLifecycleService(EnterpriseHrDbContext dbContext) {
+        public DocumentLifecycleService(EnterpriseHrDbContext dbContext, IAuditService auditService) {
             _dbContext = dbContext;
+            _auditService = auditService;
         }
 
         public async Task ActivateAsync(int documentId) {
@@ -44,8 +47,14 @@ namespace EnterpriseHR.Infrastructure.Services {
 
             document.Status = "Active";
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync();   
             await transaction.CommitAsync();
+
+            await _auditService.RecordAsync(
+                AuditActions.DocumentActivated,
+                "Document",
+                document.DocumentId.ToString(),
+                $"PolicyKey={document.PolicyKey}");
         }
     }
 }

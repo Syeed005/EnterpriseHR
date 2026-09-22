@@ -1,4 +1,5 @@
-﻿using EnterpriseHR.Core.Documents;
+﻿using EnterpriseHR.Core.Audit;
+using EnterpriseHR.Core.Documents;
 using EnterpriseHR.Core.Entities;
 using EnterpriseHR.Core.Services;
 using EnterpriseHR.Infrastructure.Data;
@@ -13,12 +14,14 @@ namespace EnterpriseHR.Infrastructure.Services {
         private readonly IDocumentExtractor _extractor;
         private readonly IDocumentTextNormalizer _normalizer;
         private readonly IDocumentMetadataExtractor _metadataExtractor;
+        private readonly IAuditService _auditService;
 
-        public DocumentIngestionService(EnterpriseHrDbContext db, IDocumentExtractor extractor, IDocumentTextNormalizer normalizer, IDocumentMetadataExtractor metadataExtractor) {
+        public DocumentIngestionService(EnterpriseHrDbContext db, IDocumentExtractor extractor, IDocumentTextNormalizer normalizer, IDocumentMetadataExtractor metadataExtractor, IAuditService auditService) {
             _db = db;
             _extractor = extractor;
             _normalizer = normalizer;
             _metadataExtractor = metadataExtractor;
+            _auditService = auditService;
         }
 
         public async Task<int> IngestAsync(string filePath) {
@@ -57,7 +60,11 @@ namespace EnterpriseHR.Infrastructure.Services {
 
             _db.Documents.Add(document);
             await _db.SaveChangesAsync();
-
+            await _auditService.RecordAsync(
+                AuditActions.DocumentIngested,
+                "Document",
+                document.DocumentId.ToString(),
+                $"FileName={document.FileName}");
             return document.DocumentId;
         }
     }
