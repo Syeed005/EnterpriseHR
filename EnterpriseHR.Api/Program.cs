@@ -15,6 +15,7 @@ using EnterpriseHR.Infrastructure.Evaluation.Rag;
 using EnterpriseHR.Infrastructure.Evaluation.Retrieval;
 using EnterpriseHR.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -109,7 +110,34 @@ public partial class Program {
         DevelopmentAuthHandler.SchemeName,
         options => { });
 
-        builder.Services.AddAuthorization();
+        builder.Services.AddAuthorization(options =>
+        {
+            options.AddPolicy(AuthorizationPolicies.EmployeeAccess, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.AddRequirements(new ApplicationRoleRequirement(
+                    ApplicationRoles.Employee,
+                    ApplicationRoles.HR,
+                    ApplicationRoles.Admin));
+            });
+
+            options.AddPolicy(AuthorizationPolicies.HRAccess, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.AddRequirements(new ApplicationRoleRequirement(
+                    ApplicationRoles.HR,
+                    ApplicationRoles.Admin));
+            });
+
+            options.AddPolicy(AuthorizationPolicies.AdminAccess, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.AddRequirements(new ApplicationRoleRequirement(
+                    ApplicationRoles.Admin));
+            });
+        });
+
+        builder.Services.AddScoped<IAuthorizationHandler, ApplicationRoleAuthorizationHandler>();
 
         var app = builder.Build();
 
@@ -127,12 +155,12 @@ public partial class Program {
         app.MapPost("/documents/ingest", async (string filePath, IDocumentIngestionService ingestionService) => {
             var documentId = await ingestionService.IngestAsync(filePath);
             return Results.Ok(new { documentId });
-        });
+        }).RequireAuthorization(AuthorizationPolicies.HRAccess);
 
         app.MapPost("/documents/{documentId:int}/chunks", async (int documentId, IDocumentChunkingService chunkingService) => {
             var chunkCount = await chunkingService.ChunkDocumentAsync(documentId);
             return Results.Ok(new { documentId, chunkCount });
-        });
+        }).RequireAuthorization(AuthorizationPolicies.HRAccess);
 
         app.MapPost("/documents/{documentId:int}/embeddings", async (int documentId, IDocumentEmbeddingService embeddingService) => {
             var count = await embeddingService.GenerateEmbeddingsAsync(documentId);
@@ -141,7 +169,7 @@ public partial class Program {
                 documentId,
                 embeddingsGenerated = count
             });
-        });
+        }).RequireAuthorization(AuthorizationPolicies.HRAccess);
 
         app.MapGet("/search/semantic", async (string query, int? topK, ISemanticSearchService searchService) =>
         {
@@ -154,7 +182,7 @@ public partial class Program {
         {
             var result = await ragService.AskAsync(request.SessionId, request.Question, request.TopK);
             return Results.Ok(result);
-        }).RequireAuthorization(); 
+        }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess); 
 
         app.MapGet("/search/fulltext", async (string query, int? topK, IFullTextSearchService searchService) =>
         {
@@ -171,7 +199,7 @@ public partial class Program {
         app.MapPost("/documents/{documentId:int}/activate", async (int documentId, IDocumentLifecycleService lifecycleService) => {
             await lifecycleService.ActivateAsync(documentId);
             return Results.Ok();
-        });
+        }).RequireAuthorization(AuthorizationPolicies.HRAccess);
 
         app.MapPost("/evaluation/retrieval", async (int? topK, IRetrievalEvaluationService evaluationService) =>
         {
@@ -210,7 +238,7 @@ public partial class Program {
                 session.ChatSessionId,
                 session.CreatedAtUtc
             });
-        }).RequireAuthorization();
+        }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
 
         app.MapPost("/chat/sessions/{sessionId:guid}/messages", async (Guid sessionId, string role, string content, IConversationService conversationService) =>
         {
@@ -223,7 +251,7 @@ public partial class Program {
                 content = message.Content,
                 createdAtUtc = message.CreatedAtUtc
             });
-        }).RequireAuthorization();
+        }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
 
         app.MapGet("/chat/sessions/{sessionId:guid}/messages", async (Guid sessionId, int? count, IConversationService conversationService) =>
         {
@@ -237,7 +265,7 @@ public partial class Program {
                 content = message.Content,
                 createdAtUtc = message.CreatedAtUtc
             }));
-        }).RequireAuthorization();
+        }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
 
         app.MapGet("/auth/me", async (ICurrentUserService currentUserService, IApplicationUserService applicationUserService) =>
         {
@@ -252,6 +280,11 @@ public partial class Program {
                 user.Role
             });
         }).RequireAuthorization();
+
+        app.MapGet("/auth/hr-test", () =>
+        {
+            return Results.Ok(new { message = "HR authorization passed." });
+        }).RequireAuthorization(AuthorizationPolicies.HRAccess);
 
         app.UseHttpsRedirection();
         app.UseAuthentication();

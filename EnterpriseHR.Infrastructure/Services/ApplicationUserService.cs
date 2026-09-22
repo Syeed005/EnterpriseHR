@@ -33,7 +33,7 @@ namespace EnterpriseHR.Infrastructure.Services {
                 ExternalUserId = externalUserId,
                 Email = _currentUserService.Email ?? string.Empty,
                 DisplayName = _currentUserService.DisplayName ?? string.Empty,
-                Role = "Employee",
+                Role = ApplicationRoles.Employee,
                 CreatedAtUtc = DateTime.UtcNow
             };
 

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using EnterpriseHR.Core.Security;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -8,7 +9,7 @@ namespace EnterpriseHR.Core.Entities {
         public string ExternalUserId { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
-        public string Role { get; set; } = "Employee";
+        public string Role { get; set; } = ApplicationRoles.Employee;
         public DateTime CreatedAtUtc { get; set; }
 
         public ICollection<ChatSession> ChatSessions { get; set; } = new List<ChatSession>();
