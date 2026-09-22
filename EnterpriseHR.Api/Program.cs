@@ -5,6 +5,7 @@ using EnterpriseHR.Core.Evaluation.Conversation;
 using EnterpriseHR.Core.Evaluation.Rag;
 using EnterpriseHR.Core.Evaluation.Retrieval;
 using EnterpriseHR.Core.Feedback;
+using EnterpriseHR.Core.Models;
 using EnterpriseHR.Core.Observability;
 using EnterpriseHR.Core.Security;
 using EnterpriseHR.Core.Services;
@@ -151,6 +152,10 @@ public partial class Program {
         builder.Services.AddScoped<IEmployeeProfileTool, EmployeeProfileTool>();
 
         builder.Services.AddScoped<IToolCallingService>(sp => new OpenAiToolCallingService(builder.Configuration["OpenAI:ApiKey"]!, sp.GetRequiredService<IEmployeeProfileTool>()));
+
+        builder.Services.AddScoped<IHrPolicySearchTool, HrPolicySearchTool>();
+
+        builder.Services.AddScoped<IHrAssistantService>(sp => new HrAssistantService(builder.Configuration["OpenAI:ApiKey"]!, sp.GetRequiredService<IEmployeeProfileTool>(), sp.GetRequiredService<IHrPolicySearchTool>(), sp.GetRequiredService<IConversationService>()));
 
         var app = builder.Build();
 
@@ -335,6 +340,8 @@ public partial class Program {
 
         app.MapPost("/tools/ask", async (string question, IToolCallingService toolCallingService) => 
             Results.Ok(await toolCallingService.AskAsync(question))).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
+
+        app.MapPost("/agent/ask", async (Guid sessionId, string question, IHrAssistantService hrAssistantService) => Results.Ok(await hrAssistantService.AskAsync(sessionId, question))).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
 
         app.UseHttpsRedirection();
         app.UseAuthentication();
