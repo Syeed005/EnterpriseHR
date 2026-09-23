@@ -1,3 +1,4 @@
+using EnterpriseHR.Api.ExceptionHandling;
 using EnterpriseHR.Api.Security;
 using EnterpriseHR.Core.AI;
 using EnterpriseHR.Core.Documents;
@@ -156,6 +157,9 @@ public partial class Program {
         builder.Services.AddScoped<IHrPolicySearchTool, HrPolicySearchTool>();
 
         builder.Services.AddScoped<IHrAssistantService>(sp => new HrAssistantService(builder.Configuration["OpenAI:ApiKey"]!, sp.GetRequiredService<IEmployeeProfileTool>(), sp.GetRequiredService<IHrPolicySearchTool>(), sp.GetRequiredService<IConversationService>()));
+
+        builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+        builder.Services.AddProblemDetails();
 
         var app = builder.Build();
 
@@ -342,11 +346,12 @@ public partial class Program {
         //    Results.Ok(await toolCallingService.AskAsync(question))).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
 
         //app.MapPost("/agent/ask", async (Guid sessionId, string question, IHrAssistantService hrAssistantService) => Results.Ok(await hrAssistantService.AskAsync(sessionId, question))).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
+        app.UseExceptionHandler();
 
         app.UseHttpsRedirection();
         app.UseAuthentication();
         app.UseAuthorization();
-
+        
         app.MapControllers();
 
         app.Run();
