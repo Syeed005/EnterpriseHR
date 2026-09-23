@@ -361,6 +361,12 @@ Total Tokens:   3,959
 Estimated Cost: $0.001952
 --------------------------------------------------
 ```
+<img width="2326" height="1157" alt="image" src="https://github.com/user-attachments/assets/a42e3d92-9d0e-45fa-b825-b0ba8f93c371" />
+
+<img width="1386" height="652" alt="image" src="https://github.com/user-attachments/assets/b5f71d28-961a-4f98-a8cb-de23b3769d28" />
+
+
+
 
 ## Selected API Capabilities
 
