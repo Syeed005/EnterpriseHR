@@ -12,12 +12,16 @@ using System.Text.Json;
 namespace EnterpriseHR.Infrastructure.AI {
     public class HrAssistantService : IHrAssistantService {
         private readonly ChatClient _client;
+        private readonly decimal _inputCostPerMillionTokens;
+        private readonly decimal _outputCostPerMillionTokens;
         private readonly IEmployeeProfileTool _employeeProfileTool;
         private readonly IHrPolicySearchTool _hrPolicySearchTool;
         private readonly IConversationService _conversationService;
 
-        public HrAssistantService(string apiKey, IEmployeeProfileTool employeeProfileTool, IHrPolicySearchTool hrPolicySearchTool, IConversationService conversationService) {
+        public HrAssistantService(string apiKey, decimal inputCostPerMillionTokens, decimal outputCostPerMillionTokens, IEmployeeProfileTool employeeProfileTool, IHrPolicySearchTool hrPolicySearchTool, IConversationService conversationService) {
             _client = new ChatClient("gpt-5-mini", apiKey);
+            _inputCostPerMillionTokens = inputCostPerMillionTokens;
+            _outputCostPerMillionTokens = outputCostPerMillionTokens;
             _employeeProfileTool = employeeProfileTool;
             _hrPolicySearchTool = hrPolicySearchTool;
             _conversationService = conversationService;
@@ -91,6 +95,8 @@ namespace EnterpriseHR.Infrastructure.AI {
             var toolsUsed = new List<string>();
             var policySources = new List<HrPolicySearchResult>();
             var policySearchCount = 0;
+            var totalInputTokens = 0;
+            var totalOutputTokens = 0;
 
 
 
@@ -110,15 +116,24 @@ namespace EnterpriseHR.Infrastructure.AI {
                     throw new AiServiceException("The AI provider request failed.", ex);
                 }
 
+                totalInputTokens += completion.Usage.InputTokenCount;
+                totalOutputTokens += completion.Usage.OutputTokenCount;
+
                 if (completion.FinishReason != ChatFinishReason.ToolCalls) {
                     var answer = completion.Content.Count > 0 ? completion.Content[0].Text : string.Empty;
                     var assistantMessage = await _conversationService.AddMessageAsync(sessionId, "assistant", answer);
+                    var totalTokens = totalInputTokens + totalOutputTokens;
+                    var estimatedCost = (totalInputTokens / 1_000_000m * _inputCostPerMillionTokens) + (totalOutputTokens / 1_000_000m * _outputCostPerMillionTokens);
 
                     return new HrAssistantResult {
                         Answer = answer,
                         AssistantMessageId = assistantMessage.ChatMessageId,
                         Citations = BuildUsedCitations(answer, policySources),
-                        ToolsUsed = toolsUsed
+                        ToolsUsed = toolsUsed,
+                        InputTokens = totalInputTokens,
+                        OutputTokens = totalOutputTokens,
+                        TotalTokens = totalTokens,
+                        EstimatedCost = estimatedCost
                     };
                 }
 

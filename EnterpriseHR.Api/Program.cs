@@ -55,7 +55,8 @@ public partial class Program {
         builder.Services.AddScoped<ITextChunker, TextChunker>();
         builder.Services.AddScoped<IDocumentChunkingService, DocumentChunkingService>();
 
-
+        var inputCostPerMillionTokens = builder.Configuration.GetValue<decimal>("OpenAI:InputCostPerMillionTokens");
+        var outputCostPerMillionTokens = builder.Configuration.GetValue<decimal>("OpenAI:OutputCostPerMillionTokens");
         builder.Services.AddSingleton<IEmbeddingService>(sp => {
             var configuration = sp.GetRequiredService<IConfiguration>();
             var apiKey = configuration["OpenAI:ApiKey"];
@@ -165,7 +166,9 @@ public partial class Program {
 
         builder.Services.AddScoped<IHrPolicySearchTool, HrPolicySearchTool>();
 
-        builder.Services.AddScoped<IHrAssistantService>(sp => new HrAssistantService(builder.Configuration["OpenAI:ApiKey"]!, sp.GetRequiredService<IEmployeeProfileTool>(), sp.GetRequiredService<IHrPolicySearchTool>(), sp.GetRequiredService<IConversationService>()));
+        //builder.Services.AddScoped<IHrAssistantService>(sp => new HrAssistantService(builder.Configuration["OpenAI:ApiKey"]!, sp.GetRequiredService<IEmployeeProfileTool>(), sp.GetRequiredService<IHrPolicySearchTool>(), sp.GetRequiredService<IConversationService>()));
+
+        builder.Services.AddScoped<IHrAssistantService>(sp => new HrAssistantService(builder.Configuration["OpenAI:ApiKey"]!, inputCostPerMillionTokens, outputCostPerMillionTokens, sp.GetRequiredService<IEmployeeProfileTool>(), sp.GetRequiredService<IHrPolicySearchTool>(), sp.GetRequiredService<IConversationService>()));
 
         builder.Services.AddScoped<IAgentEvaluationService, AgentEvaluationService>();
 

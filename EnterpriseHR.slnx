@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="EnterpriseHR.Api/EnterpriseHR.Api.csproj" />
+  <Project Path="EnterpriseHR.Console/EnterpriseHR.Console.csproj" Id="dee77c89-abc5-4bec-80be-ecf1e94cbe36" />
   <Project Path="EnterpriseHR.Core/EnterpriseHR.Core.csproj" />
   <Project Path="EnterpriseHR.Infrastructure/EnterpriseHR.Infrastructure.csproj" />
   <Project Path="EnterpriseHR.Tests/EnterpriseHR.Tests.csproj" />

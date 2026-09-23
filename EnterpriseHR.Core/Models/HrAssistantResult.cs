@@ -9,5 +9,9 @@ namespace EnterpriseHR.Core.Models {
         public long AssistantMessageId { get; set; }
         public List<RagCitation> Citations { get; set; } = [];
         public List<string> ToolsUsed { get; set; } = [];
+        public int InputTokens { get; set; }
+        public int OutputTokens { get; set; }
+        public int TotalTokens { get; set; }
+        public decimal EstimatedCost { get; set; }
     }
 }
