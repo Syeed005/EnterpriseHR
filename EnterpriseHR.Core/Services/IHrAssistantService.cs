@@ -6,6 +6,6 @@ using System.Text;
 
 namespace EnterpriseHR.Core.Services {
     public interface IHrAssistantService {
-        Task<HrAssistantResult> AskAsync(Guid sessionId, string question);
+        Task<HrAssistantResult> AskAsync(Guid sessionId, string question, CancellationToken cancellationToken = default);
     }
 }

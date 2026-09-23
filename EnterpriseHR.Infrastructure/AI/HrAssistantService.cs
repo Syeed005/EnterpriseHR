@@ -1,4 +1,5 @@
 ﻿using EnterpriseHR.Core.AI;
+using EnterpriseHR.Core.Exceptions;
 using EnterpriseHR.Core.Models;
 using EnterpriseHR.Core.Services;
 using EnterpriseHR.Core.Tools;
@@ -38,7 +39,12 @@ namespace EnterpriseHR.Infrastructure.AI {
               }
         """));
 
-        public async Task<HrAssistantResult> AskAsync(Guid sessionId, string question) {
+        public async Task<HrAssistantResult> AskAsync(Guid sessionId, string question, CancellationToken cancellationToken = default) {
+            
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(30));
+            var operationToken = timeoutCts.Token;
+
             var history = await _conversationService.GetRecentMessagesAsync(sessionId, 6);
             await _conversationService.AddMessageAsync(sessionId, "user", question);
 
@@ -89,7 +95,16 @@ namespace EnterpriseHR.Infrastructure.AI {
             const int maxRounds = 4;
 
             for (var round = 0; round < maxRounds; round++) {
-                var completion = (await _client.CompleteChatAsync(messages, options)).Value;
+                operationToken.ThrowIfCancellationRequested();
+                ChatCompletion completion;
+
+                try {
+                    completion = (await _client.CompleteChatAsync(messages, options, operationToken)).Value;
+                } catch (OperationCanceledException) {
+                    throw;
+                } catch (Exception ex) {
+                    throw new AiServiceException("The AI provider request failed.", ex);
+                }
 
                 if (completion.FinishReason != ChatFinishReason.ToolCalls) {
                     var answer = completion.Content.Count > 0 ? completion.Content[0].Text : string.Empty;

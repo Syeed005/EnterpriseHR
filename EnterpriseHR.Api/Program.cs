@@ -32,6 +32,10 @@ using Scalar.AspNetCore;
 public partial class Program {
     private static void Main(string[] args) {
         var builder = WebApplication.CreateBuilder(args);
+        
+        if (!builder.Environment.IsDevelopment())
+            throw new InvalidOperationException("Production authentication is not configured. Configure the approved production identity provider before running outside Development.");
+
 
         // Add services to the container.
 
@@ -112,11 +116,12 @@ public partial class Program {
         builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
         builder.Services.AddScoped<IApplicationUserService, ApplicationUserService>();
 
-        builder.Services
-            .AddAuthentication(DevelopmentAuthHandler.SchemeName)
-            .AddScheme<AuthenticationSchemeOptions, DevelopmentAuthHandler>(
-        DevelopmentAuthHandler.SchemeName,
-        options => { });
+        if (builder.Environment.IsDevelopment()) {
+            builder.Services.AddAuthentication(DevelopmentAuthHandler.SchemeName)
+                            .AddScheme<AuthenticationSchemeOptions, DevelopmentAuthHandler>(DevelopmentAuthHandler.SchemeName, options => { });
+        }
+
+            
 
         builder.Services.AddAuthorization(options =>
         {
@@ -262,7 +267,7 @@ public partial class Program {
             });
         }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
 
-        app.MapPost("/chat/ask", async (AskHrAssistantRequest request, IHrAssistantService hrAssistantService) => {
+        app.MapPost("/chat/ask", async (AskHrAssistantRequest request, IHrAssistantService hrAssistantService, CancellationToken cancellationToken) => {
             RequestValidator.Validate(request);
             return Results.Ok(await hrAssistantService.AskAsync(request.SessionId, request.Question));
         }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);

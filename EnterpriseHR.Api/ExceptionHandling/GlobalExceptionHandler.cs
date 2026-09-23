@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Diagnostics;
+﻿using EnterpriseHR.Core.Exceptions;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EnterpriseHR.Api.ExceptionHandling {
@@ -10,10 +11,17 @@ namespace EnterpriseHR.Api.ExceptionHandling {
         }
 
         public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken) {
+            if (exception is OperationCanceledException && httpContext.RequestAborted.IsCancellationRequested) {
+                _logger.LogInformation("Request was cancelled by the client.");
+                return false;
+            }
+
             var (statusCode, title, detail) = exception switch {
                 UnauthorizedAccessException => (StatusCodes.Status403Forbidden, "Forbidden", "You do not have access to this resource."),
                 KeyNotFoundException => (StatusCodes.Status404NotFound, "Not Found", exception.Message),
                 ArgumentException => (StatusCodes.Status400BadRequest, "Bad Request", exception.Message),
+                OperationCanceledException => (StatusCodes.Status504GatewayTimeout, "Gateway Timeout", "The AI request exceeded the allowed processing time."),
+                AiServiceException => (StatusCodes.Status503ServiceUnavailable, "Service Unavailable", "The AI service is temporarily unavailable. Please try again later."),
                 _ => (StatusCodes.Status500InternalServerError, "Internal Server Error", "An unexpected error occurred.")
             };
 
