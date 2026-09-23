@@ -1,5 +1,6 @@
 using EnterpriseHR.Api.ExceptionHandling;
 using EnterpriseHR.Api.Security;
+using EnterpriseHR.Api.Validation;
 using EnterpriseHR.Core.AI;
 using EnterpriseHR.Core.Documents;
 using EnterpriseHR.Core.Evaluation.Conversation;
@@ -8,6 +9,7 @@ using EnterpriseHR.Core.Evaluation.Retrieval;
 using EnterpriseHR.Core.Feedback;
 using EnterpriseHR.Core.Models;
 using EnterpriseHR.Core.Observability;
+using EnterpriseHR.Core.Requests;
 using EnterpriseHR.Core.Security;
 using EnterpriseHR.Core.Services;
 using EnterpriseHR.Core.Tools;
@@ -260,11 +262,11 @@ public partial class Program {
             });
         }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
 
-        app.MapPost("/chat/ask", async (Guid sessionId, string question, IHrAssistantService hrAssistantService) => {
-            var result = await hrAssistantService.AskAsync(sessionId, question);
-            return Results.Ok(result);
+        app.MapPost("/chat/ask", async (AskHrAssistantRequest request, IHrAssistantService hrAssistantService) => {
+            RequestValidator.Validate(request);
+            return Results.Ok(await hrAssistantService.AskAsync(request.SessionId, request.Question));
         }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
-        
+
         app.MapPost("/chat/sessions/{sessionId:guid}/messages", async (Guid sessionId, string role, string content, IConversationService conversationService) =>
         {
             var message = await conversationService.AddMessageAsync(sessionId, role, content);
