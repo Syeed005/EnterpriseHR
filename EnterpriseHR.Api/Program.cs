@@ -3,6 +3,7 @@ using EnterpriseHR.Api.Security;
 using EnterpriseHR.Api.Validation;
 using EnterpriseHR.Core.AI;
 using EnterpriseHR.Core.Documents;
+using EnterpriseHR.Core.Evaluation.AgentEvaluation;
 using EnterpriseHR.Core.Evaluation.Conversation;
 using EnterpriseHR.Core.Evaluation.Rag;
 using EnterpriseHR.Core.Evaluation.Retrieval;
@@ -16,6 +17,7 @@ using EnterpriseHR.Core.Tools;
 using EnterpriseHR.Infrastructure.AI;
 using EnterpriseHR.Infrastructure.Data;
 using EnterpriseHR.Infrastructure.Documents;
+using EnterpriseHR.Infrastructure.Evaluation.AgentEvaluation;
 using EnterpriseHR.Infrastructure.Evaluation.Conversation;
 using EnterpriseHR.Infrastructure.Evaluation.Rag;
 using EnterpriseHR.Infrastructure.Evaluation.Retrieval;
@@ -165,6 +167,8 @@ public partial class Program {
 
         builder.Services.AddScoped<IHrAssistantService>(sp => new HrAssistantService(builder.Configuration["OpenAI:ApiKey"]!, sp.GetRequiredService<IEmployeeProfileTool>(), sp.GetRequiredService<IHrPolicySearchTool>(), sp.GetRequiredService<IConversationService>()));
 
+        builder.Services.AddScoped<IAgentEvaluationService, AgentEvaluationService>();
+
         builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
         builder.Services.AddProblemDetails();
 
@@ -244,6 +248,13 @@ public partial class Program {
             var result = await evaluationService.RunAsync();
             return Results.Ok(result);
         });
+
+        if (app.Environment.IsDevelopment()) {
+            app.MapPost("/evaluation/agent", async (Guid sessionId, IAgentEvaluationService evaluationService, CancellationToken cancellationToken) => {
+                var results = await evaluationService.RunAsync(sessionId, cancellationToken);
+                return Results.Ok(results);
+            }).RequireAuthorization(AuthorizationPolicies.EmployeeAccess);
+        }
 
         app.MapGet("/usage/summary", async (IAiUsageService usageService) =>
         {

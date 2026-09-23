@@ -59,7 +59,11 @@ namespace EnterpriseHR.Infrastructure.AI {
                 - Use get_my_employee_profile when the question requires facts about the current authenticated employee.
                 - Use search_hr_policy when the question requires HR policy, rules, schedules, eligibility, procedures, or other authoritative HR document    information.
                 - Use both tools when answering requires both employee-specific data and HR policy information.
+                - Do not offer to perform another policy search after the policy search tool reports that the search limit has been reached.
 
+                - Never claim or imply that you can contact HR, retrieve HR contact information, send messages, create tickets, or perform any action unless an available tool explicitly provides that capability.
+
+                - If the available authorized information does not contain the requested information, clearly state that it was not found in the HR information available to the current user. Do not invent an alternative capability.
                 - If search_hr_policy does not return information sufficient to answer the question, do not repeatedly search for the same unavailable information.
                 - After a reasonable search attempt, state that the available authorized HR information does not provide the requested information.
                 - Never infer, guess, or reconstruct information that is absent from the authorized tool results.
@@ -134,7 +138,7 @@ namespace EnterpriseHR.Infrastructure.AI {
                         policySearchCount++;
 
                         if (policySearchCount > 2) {
-                            messages.Add(new ToolChatMessage(toolCall.Id, JsonSerializer.Serialize(new { found = false, message = "The policy search limit has been reached. No additional authorized policy search may be performed. Answer using the information already available, or state that the available authorized HR information does not provide the requested information." })));
+                            messages.Add(new ToolChatMessage(toolCall.Id, JsonSerializer.Serialize(new { found = false, mmessage = "The policy search limit has been reached. Do not offer another search. Answer using the authorized information already available. If that information does not answer the question, state that the requested information was not found in the HR information available to this user. Do not offer capabilities that are not provided by the available tools." })));
                             continue;
                         }
 
